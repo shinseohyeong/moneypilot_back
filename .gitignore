@@ -1,0 +1,188 @@
+# ==========================================
+# Python
+# ==========================================
+
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / Packaging
+.Python
+build/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# ==========================================
+# Virtual Environment
+# ==========================================
+
+venv/
+env/
+ENV/
+.venv/
+.python-version
+
+# ==========================================
+# Environment Variables / Secrets
+# ==========================================
+
+.env
+.env.*
+!.env.example
+
+secrets.json
+config.secret.json
+*.pem
+*.key
+*.crt
+
+# ==========================================
+# FastAPI / Uvicorn
+# ==========================================
+
+*.log
+logs/
+uvicorn.log
+
+# Upload / Static / Media files
+media/
+uploads/
+staticfiles/
+
+# ==========================================
+# SQLAlchemy / Alembic
+# ==========================================
+
+# SQLite 사용 시
+*.db
+*.sqlite
+*.sqlite3
+
+# Alembic cache
+alembic/versions/__pycache__/
+alembic/versions/*.pyc
+
+# Alembic 마이그레이션 파일은 보통 git에 올림
+# 그래서 아래는 주석 처리
+# alembic/versions/*.py
+
+# ==========================================
+# PostgreSQL / Docker
+# ==========================================
+
+postgres_data/
+pgdata/
+data/
+
+docker-compose.override.yml
+
+# ==========================================
+# Test / Coverage
+# ==========================================
+
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.cache/
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+
+# ==========================================
+# Type checking / Linting
+# ==========================================
+
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+.ruff_cache/
+
+# ==========================================
+# Jupyter Notebook
+# ==========================================
+
+.ipynb_checkpoints/
+
+# ==========================================
+# VS Code / IDE
+# ==========================================
+
+.vscode/
+.idea/
+
+# 단, 팀원과 공유할 VS Code 설정이 있으면 아래처럼 예외 가능
+# !.vscode/settings.json
+# !.vscode/extensions.json
+
+# ==========================================
+# macOS
+# Intel Mac / Apple Silicon 공통
+# ==========================================
+
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Icon must end with two \r
+Icon
+
+._*
+
+.Spotlight-V100
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# ==========================================
+# Node / Frontend 같이 있을 경우
+# ==========================================
+
+node_modules/
+.next/
+out/
+dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ==========================================
+# Misc
+# ==========================================
+
+*.bak
+*.tmp
+*.swp
+*.swo
