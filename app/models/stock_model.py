@@ -10,6 +10,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from app.core.database import Base
 
@@ -37,16 +38,16 @@ class StockPrice(Base):
 
     price_date = Column(Date, nullable=False)
     close_price = Column(DECIMAL(15, 2), nullable=False)
-    previous_close = Column(DECIMAL(15, 2), default=0)
-    price_change = Column(DECIMAL(15, 2), default=0)
-    change_rate = Column(DECIMAL(6, 2), default=0)
+    previous_close = Column(DECIMAL(15, 2), server_default=text("0"))
+    price_change = Column(DECIMAL(15, 2), server_default=text("0"))
+    change_rate = Column(DECIMAL(6, 2), server_default=text("0"))
 
-    open_price = Column(DECIMAL(15, 2), default=0)
-    high_price = Column(DECIMAL(15, 2), default=0)
-    low_price = Column(DECIMAL(15, 2), default=0)
+    open_price = Column(DECIMAL(15, 2), server_default=text("0"))
+    high_price = Column(DECIMAL(15, 2), server_default=text("0"))
+    low_price = Column(DECIMAL(15, 2), server_default=text("0"))
 
-    volume = Column(BigInteger, default=0)
-    trade_value = Column(DECIMAL(20, 2), default=0)
+    volume = Column(BigInteger, server_default=text("0"))
+    trade_value = Column(DECIMAL(20, 2), server_default=text("0"))
 
     source = Column(String(50), nullable=False, default="PUBLIC_DATA")
     fetched_at = Column(DateTime, server_default=func.now())

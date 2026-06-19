@@ -12,6 +12,7 @@ from sqlalchemy import (
     func,
     JSON,
     text,
+    Integer,
 )
 from app.core.database import Base
 
@@ -100,10 +101,10 @@ class SectorInsight(Base):
     insight_date = Column(Date, nullable=False)
     period_days = Column(BigInteger, nullable=False, default=7)
 
-    news_count = Column(int, default="0")
-    positive_count = Column(int, default="0")
-    neutral_count = Column(int, default="0")
-    negative_count = Column(int, default="0")
+    news_count = Column(Integer, server_default=text("0"))
+    positive_count = Column(Integer, server_default=text("0"))
+    neutral_count = Column(Integer, server_default=text("0"))
+    negative_count = Column(Integer, server_default=text("0"))
     main_keywords = Column(JSON, nullable=True)
 
     issue_score = Column(DECIMAL(6, 2), nullable=True)
@@ -120,6 +121,66 @@ class SectorInsight(Base):
             "period_days",
             name="uk_sector_insight_period",
         ),
+    )
+
+class StockReport(Base):
+    __tablename__ = "stock_reports"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+
+    # 사용자 ID
+    user_id = Column(
+        BigInteger,
+        ForeignKey("users.id"),
+        nullable=False,
+    )
+
+    # 리포트 기준일
+    report_date = Column(
+        Date,
+        nullable=False,
+    )
+
+    # 리포트 제목
+    report_title = Column(
+        String(100),
+        nullable=False,
+    )
+
+    # 시장 요약
+    market_summary = Column(
+        Text,
+        nullable=True,
+    )
+
+    # 섹터 요약
+    sector_summary = Column(
+        Text,
+        nullable=True,
+    )
+
+    # 관심종목 요약
+    watchlist_summary = Column(
+        Text,
+        nullable=True,
+    )
+
+    # 위험 요인
+    risk_summary = Column(
+        Text,
+        nullable=True,
+    )
+
+    # 투자 유의 문구
+    disclaimer = Column(
+        Text,
+        nullable=False,
+    )
+
+    # 생성일
+    created_at = Column(
+        DateTime,
+        server_default=func.now(),
     )
 
 class StockReportItem(Base):
