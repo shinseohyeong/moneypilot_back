@@ -10,6 +10,8 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    JSON,
+    text,
 )
 from app.core.database import Base
 
@@ -45,6 +47,8 @@ class StockNewsMapping(Base):
     news_id = Column(BigInteger, ForeignKey("news_articles.id"), nullable=False)
     stock_id = Column(BigInteger, ForeignKey("stocks.id"), nullable=False)
 
+    matched_keyword = Column(String(100), nullable=True)
+
     relevance_score = Column(DECIMAL(5, 2), nullable=True)
     created_at = Column(DateTime, server_default=func.now())
 
@@ -60,6 +64,7 @@ class NewsSectorMapping(Base):
     news_id = Column(BigInteger, ForeignKey("news_articles.id"), nullable=False)
     sector_id = Column(BigInteger, ForeignKey("stock_sectors.id"), nullable=False)
 
+    matched_keywords = Column(JSON, nullable=True)
     relevance_score = Column(DECIMAL(5, 2), nullable=True)
     created_at = Column(DateTime, server_default=func.now())
 
@@ -74,10 +79,13 @@ class NewsSummary(Base):
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     news_id = Column(BigInteger, ForeignKey("news_articles.id"), nullable=False)
 
-    summary = Column(Text, nullable=False)
+    one_line_summary = Column(String(500), nullable=True)
+    summary_text = Column(Text, nullable=False)
+    positive_factors = Column(JSON, nullable=True)
+    risk_factors = Column(JSON, nullable=True)
+    investment_note = Column(Text, nullable=True)
     sentiment = Column(String(20), nullable=True)
-    keywords = Column(Text, nullable=True)
-    investment_view = Column(Text, nullable=True)
+    model_name = Column(String(100), nullable=True)
 
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
@@ -92,10 +100,15 @@ class SectorInsight(Base):
     insight_date = Column(Date, nullable=False)
     period_days = Column(BigInteger, nullable=False, default=7)
 
+    news_count = Column(int, default="0")
+    positive_count = Column(int, default="0")
+    neutral_count = Column(int, default="0")
+    negative_count = Column(int, default="0")
+    main_keywords = Column(JSON, nullable=True)
+
     issue_score = Column(DECIMAL(6, 2), nullable=True)
+    insight_summary = Column(Text, nullable=True)
     risk_summary = Column(Text, nullable=True)
-    trend_summary = Column(Text, nullable=True)
-    keywords = Column(Text, nullable=True)
 
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
@@ -107,4 +120,49 @@ class SectorInsight(Base):
             "period_days",
             name="uk_sector_insight_period",
         ),
+    )
+
+class StockReportItem(Base):
+    __tablename__ = "stock_report_items"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+
+    report_id = Column(
+        BigInteger,
+        ForeignKey("stock_reports.id"),
+        nullable=False,
+    )
+
+    stock_id = Column(
+        BigInteger,
+        ForeignKey("stocks.id"),
+        nullable=False,
+    )
+
+    # 현재가
+    current_price = Column(
+        DECIMAL(15, 2),
+        nullable=True,
+        server_default=text("0"),
+    )
+
+    # 등락률
+    change_rate = Column(
+        DECIMAL(6, 2),
+        nullable=True,
+        server_default=text("0"),
+    )
+
+    # 관련 뉴스 요약
+    news_summary = Column(Text, nullable=True)
+
+    # 섹터 흐름 요약
+    sector_summary = Column(Text, nullable=True)
+
+    # 위험 요인
+    risk_factors = Column(Text, nullable=True)
+
+    created_at = Column(
+        DateTime,
+        server_default=func.now(),
     )
