@@ -28,11 +28,19 @@ class DepositProduct(Base):
     # 가입 기간 개월 수
     join_period = Column(Integer, nullable=False)
 
+    # 생성일
+    created_at = Column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
+    )
+
     # 금융감독원/외부 API 데이터 갱신 시각
     updated_at = Column(
         DateTime,
         server_default=func.now(),
         onupdate=func.now(),
+        nullable=False,
     )
 
 
@@ -51,11 +59,19 @@ class SavingProduct(Base):
     # 가입 기간 개월 수
     join_period = Column(Integer, nullable=False)
 
+    # 생성일
+    created_at = Column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
+    )
+
     # 금융감독원/외부 API 데이터 갱신 시각
     updated_at = Column(
         DateTime,
         server_default=func.now(),
         onupdate=func.now(),
+        nullable=False,
     )
 
 
@@ -81,7 +97,14 @@ class FinancialProductRecommendation(Base):
 
     recommendation_reason = Column(Text, nullable=True)
 
-    created_at = Column(DateTime, server_default=func.now())
+    created_at = Column(DateTime, server_default=func.now(), nullable=False,)
+
+    updated_at = Column(
+        DateTime,
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
 
 
 class InsuranceProduct(Base):
@@ -97,30 +120,18 @@ class InsuranceProduct(Base):
 
     description = Column(Text, nullable=True)
 
+    created_at = Column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
+    )
+
     # 외부 API 또는 관리자 데이터 갱신 시각
     updated_at = Column(
         DateTime,
         server_default=func.now(),
         onupdate=func.now(),
     )
-
-
-class InsuranceAnalysis(Base):
-    __tablename__ = "insurance_analyses"
-
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-
-    user_id = Column(
-        BigInteger,
-        ForeignKey("users.id"),
-        nullable=False,
-    )
-
-    recommended_type = Column(String(50), nullable=False)
-
-    analysis_result = Column(Text, nullable=False)
-
-    created_at = Column(DateTime, server_default=func.now())
 
 
 class InterestCalculationHistory(Base):
@@ -146,5 +157,12 @@ class InterestCalculationHistory(Base):
 
     before_tax_amount = Column(BigInteger, nullable=False)
     after_tax_amount = Column(BigInteger, nullable=False)
+    maturity_amount = Column(BigInteger, nullable=False)
 
-    created_at = Column(DateTime, server_default=func.now())
+    created_at = Column(DateTime, server_default=func.now(), nullable=False)
+    updated_at = Column(
+        DateTime,
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False
+    )

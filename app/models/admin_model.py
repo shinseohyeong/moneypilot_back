@@ -9,6 +9,7 @@ from sqlalchemy import (
     Integer,
     String,
     func,
+    text,
 )
 
 from app.core.database import Base
@@ -31,15 +32,15 @@ class TokenUsageLog(Base):
     # 예: gpt-4o-mini, text-embedding-3-small 등
     model_name = Column(String(100), nullable=False)
 
-    prompt_tokens = Column(Integer, nullable=False, default=0)
+    prompt_tokens = Column(Integer, nullable=False, server_default=text("0"))
 
-    completion_tokens = Column(Integer, nullable=False, default=0)
+    completion_tokens = Column(Integer, nullable=False, server_default=text("0"))
 
-    embedding_tokens = Column(Integer, nullable=False, default=0)
+    embedding_tokens = Column(Integer, nullable=False, server_default=text("0"))
 
-    total_tokens = Column(Integer, nullable=False, default=0)
+    total_tokens = Column(Integer, nullable=False, server_default=text("0"))
 
-    estimated_cost = Column(DECIMAL(12, 6), nullable=False, default=0)
+    estimated_cost = Column(DECIMAL(12, 6), nullable=False, server_default=text("0"))
 
     usage_date = Column(Date, nullable=False)
 
