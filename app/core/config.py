@@ -14,6 +14,10 @@ class Settings:
     DB_PASSWORD: str = os.getenv("DB_PASSWORD", "")
     DB_NAME: str = os.getenv("DB_NAME", "")
 
+    public_data_stock_service_key: str | None = os.getenv(
+        "PUBLIC_DATA_STOCK_SERVICE_KEY"
+    )
+
     @property
     def DATABASE_URL(self) -> str:
         return (
