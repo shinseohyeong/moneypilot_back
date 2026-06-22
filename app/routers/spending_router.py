@@ -13,7 +13,7 @@ router = APIRouter()
 
 @router.post(
     "/monthly",
-    response_model=MonthlyAnalysisRequest,
+    response_model=MonthlySummaryResponse,
     summary="월별 분석 실행 및 저장",
 )
 def analyze_monthly_spending(
@@ -26,7 +26,7 @@ def analyze_monthly_spending(
     계산 기준:
     - 총수입: finance_profiles.monthly_salary
     - 총지출: transactions.amount 합계
-    - 고정비: transactions.is_fixed=True 금액 합계 + finance_profiles.fixed_expense
+    - 고정비: transactions.expense_type="FIXED" 금액 합계
     - 변동비: 초지출 - 고정비
     - 여유자금: 총수입 - 총지출
     - 전월 대비 증감액/증감률: 전월 total_spending 기준
