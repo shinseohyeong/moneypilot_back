@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional
 from datetime import datetime
 from decimal import Decimal
@@ -16,13 +16,38 @@ class MonthlySummaryResponse(BaseModel):
   user_id: int
   month: str
   
-  total_income: Decimal
-  total_spending: Decimal
-  fixed_expense: Decimal
-  variable_expense: Decimal
-  remaining_money: Decimal
-  spending_diff: Decimal
-  spending_change_rate: Decimal
+  total_income: int
+  monthly_salary: int
+  total_spending: int
+  fixed_expense: int
+  variable_expense: int
+  remaining_money: int
+  spending_diff: int | None = None
+  spending_change_rate: float | None = None
+  
+  @field_validator(
+    "total_income",
+    "monthly_salary",
+    "total_spending",
+    "fixed_expense",
+    "variable_expense",
+    "remaining_money",
+    "spending_diff",
+    mode="before",
+  )
+  
+  @classmethod
+  def decimal_to_int(cls, value):
+    if value is None:
+      return None
+    return int(value)
+
+  @field_validator("spending_change_rate", mode="before")
+  @classmethod
+  def decimal_to_float(cls, value):
+    if value is None:
+      return None
+    return float(value)
   
   class Config:
     from_attributes = True
