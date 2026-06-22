@@ -4,7 +4,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.user_model import FinanceProfile
-from app.models.spending_analysis_model import MonthlySpendingSummary
+from app.models.spending_analysis_model import MonthlySpendingSummary, CategorySpending
 from app.models.transaction_model import Transaction
 
 
@@ -153,4 +153,91 @@ class SpendingAnalysisRepository:
     self.db.refresh(summary)
     
     return summary
+
+# --------------------------------------------------------------
+#  카테고리
+# --------------------------------------------------------------
+class SpendingRepository:
+  def __init__(self, db: Session):
+    self.db = db
+  
+  def get_monthly_summary_by_user_and_month(
+    self,
+    user_id: int,
+    month: str,
+  ) -> MonthlySpendingSummary | None:
+    """ 사용자 ID와 월 기준으로 월별 요약 데이터를 조회 """
+    
+    return (
+      self.db.query(MonthlySpendingSummary)
+      .filter(
+        MonthlySpendingSummary.user_id == user_id,
+        MonthlySpendingSummary.month == month,
+      )
+      .first()
+    )
+  
+  
+  def get_category_totals_by_user_and_month(
+    self,
+    user_id: int,
+    month: str,
+  ) :
+    """ transactions 테이블에서 특정 월의 지출을 카테고리별로 합산 """
+    
+    return (
+      self.db.query(
+        Transaction.category.label("category"),
+        func.sum(Transaction.amount).label("category_amount"),
+        func.count(Transaction.id).label("transaction_count"),
+      )
+      .filter(
+        Transaction.user_id == user_id,
+        Transaction.month == month,
+        Transaction.category.isnot(None),
+      )
+      .group_by(Transaction.category)
+      .order_by(func.sum(Transaction.amount).desc())
+      .all()
+    )
+    
+  def get_previous_category_amount(
+    self,
+    user_id: int,
+    previous_month: str,
+    category: str,
+  ):
+    """ 전월의 특정 카테고리 지출 금액 조회 """
+    
+    return (
+      self.db.query(func.coalesce(func.sum(Transaction.amount), 0))
+      .filter(
+        Transaction.user_id == user_id,
+        Transaction.month == previous_month,
+        Transaction.category == category,
+      )
+      .scalar()
+      or 0
+    )
+
+
+  def delete_category_spendings_by_summary_id(
+    self,
+    summary_id: int,
+  ) -> None:
+    """ 
+    기존 카테고리별 지출 데이터 삭제,
+    재분석 시 중복 저장 방지를 위함.
+    """
+    self.db.query(CategorySpending).filter(
+      CategorySpending.summary_id == summary_id
+    ).delete()
+    
+  
+  def create_category_spendings(
+    self,
+    category_spendings: list[CategorySpending],
+  ) -> None:
+    """ 카테고리별 지출 데이터를 저장 """
+    self.db.add_all(category_spendings)
   
