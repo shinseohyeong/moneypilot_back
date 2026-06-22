@@ -51,3 +51,42 @@ class MonthlySummaryResponse(BaseModel):
   
   class Config:
     from_attributes = True
+
+
+# --------------------------------------------------------------
+#  카테고리
+# --------------------------------------------------------------
+
+class CategorySpendingResponse(BaseModel):
+  """ 월별 카테고리별 지출 조회 응답 """
+  id: int
+  summary_id: int
+  user_id:int
+  month: str
+  
+  category: str
+  category_amount: int
+  category_ratio: Decimal
+  
+  transaction_count: int
+  previous_category_amount: int
+  spending_diff: int
+  spending_change_rate: Decimal
+  
+  created_at: datetime
+  
+  @field_validator(
+    "category_amount",
+    "previous_category_amount",
+    "spending_diff",
+    mode="before",
+  )
+  @classmethod
+  def decimal_to_int(cls, value):
+    if value is None:
+      return 0
+
+    return int(value)
+  
+  class Config:
+    from_attributes = True
