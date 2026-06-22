@@ -14,12 +14,16 @@ from app.routers import stock_router
 from app.routers import transaction_router
 from app.routers import user_router
 
+from app.routers.finance_profile_router import router as finance_profile_router
+
 
 app = FastAPI(
     title="MoneyPilot API",
     description="MoneyPilot FastAPI Backend",
     version="1.0.0",
 )
+
+app.include_router(finance_profile_router)
 
 app.add_middleware(
     CORSMiddleware,
