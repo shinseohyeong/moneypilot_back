@@ -47,6 +47,22 @@ class SpendingAnalysisService:
   
   def calculate_change_rate(
     self,
+    spending_diff: Decimal,
+    previous_total_spending: Decimal,
+  ):
+    """
+    전월 대비 지출 증감률 계산
+    """
+    if previous_total_spending == 0:
+      return Decimal("0")
+    
+    return (
+      spending_diff / previous_total_spending * Decimal("100")
+    ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    
+    
+  def analyze_and_save_monthly_summary(
+    self,
     user_id: int,
     month: str,
   ):
@@ -71,11 +87,15 @@ class SpendingAnalysisService:
         detail="금융 프로필이 없습니다. 월급 정보를 먼저 입력해주세요.",
       )
     
-    monthly_salary = Decimal(finance_profile.monthly_salary or 0)
-    profile_fixed_expense = Decimal(finance_profile.fixed_expense or 0)
     
     # 총 수입액
-    total_income = monthly_salary
+    total_income = Decimal(finance_profile.monthly_salary or 0)
+    
+    # 월급
+    monthly_salary = total_income
+    
+    # 프로필 고정액
+    # profile_fixed_expense = Decimal(getattr(finance_profile, "fixed_expense", 0) or 0)
     
     # 총 지출액
     total_transaction_amount = self.repository.get_monthly_total_transaction_amount(
@@ -83,11 +103,18 @@ class SpendingAnalysisService:
       month=month,
     )
     
+    # 거래내역 중 고정비 합계
+    fixed_transaction_amount = self.repository.get_monthly_fixed_transaction_amount(
+      user_id=user_id,
+      month=month,
+    )
+    
     total_spending = abs(Decimal(total_transaction_amount or 0))
-    fixed_transaction_amount = abs(Decimal(fixed_transaction_amount or 0))
+    
+    fixed_expense = abs(Decimal(fixed_transaction_amount or 0))
     
     # 고정비 = 거래내역 고정비 + 사용자가 직접 입력한 월 고정비
-    fixed_expense = fixed_transaction_amount + profile_fixed_expense
+    # fixed_expense = fixed_transaction_amount + profile_fixed_expense
     
     # 변동비 = 총지출 - 고정비
     variable_expense = total_spending - fixed_expense
@@ -119,6 +146,7 @@ class SpendingAnalysisService:
     
     data = {
       "total_income": total_income,
+      "monthly_salary": monthly_salary,
       "total_spending": total_spending,
       "fixed_expense": fixed_expense,
       "variable_expense": variable_expense,
