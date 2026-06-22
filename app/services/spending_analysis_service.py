@@ -1,11 +1,13 @@
 import re
 from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP
+from dateutil.relativedelta import relativedelta
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.repositories.spending_repository import SpendingAnalysisRepository
+from app.models.spending_analysis_model import CategorySpending
+from app.repositories.spending_repository import SpendingAnalysisRepository, SpendingRepository
 
 
 class SpendingAnalysisService:
@@ -198,6 +200,122 @@ class SpendingAnalysisService:
       )
     
     return summary
+
+
+# --------------------------------------------------------------
+#  카테고리
+# --------------------------------------------------------------
+class SpendingService:
+  def __init__(self, db: Session):
+    self.db = db
+    self.repository = SpendingRepository(db)
+  
+  def save_monthly_category_spendings(
+    self,
+    user_id: int,
+    month: str,
+  ) -> list[CategorySpending]:
+    """ 특정 월의 거래내역을 카테고리별로 합산하여 저장 """
+    
+    summary = self.repository.get_monthly_summary_by_user_and_month(
+      user_id=user_id,
+      month=month,
+    )
+    
+    if not summary:
+      raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="해당 월의 월별 요약 데이터가 없습니다.",
+      )
+    
+    category_totals = self.repository.get_category_totals_by_user_and_month(
+      user_id=user_id,
+      month=month,
+    )
+    
+    if not category_totals:
+      raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="해당 월의 거래내역이 없습니다.",
+      )
+    
+    #  현재 month 기준으로 전월 계산
+    current_month_date = datetime.strftime(month, "%Y-%m")
+    previous_month = (
+      current_month_date - relativedelta(months=1)
+    ).strftime("%Y-%m")
+      
+    # 지출 금액 합계 계산
+    total_amount = sum(
+      abs(Decimal(row.category_amount or 0))
+      for row in category_totals
+    )
+    
+    if total_amount == 0:
+      raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="카테고리별 지출 합계가 0원입니다.",
+      )
+    
+    # 기존 데이터 삭제 후 재저장
+    self.repository.delete_category_spendings_by_summary_id(
+      summary_id=summary.id,
+    )
+    
+    category_spendings = []
+    
+    for row in category_totals:
+      category_amount = abs(Decimal(row.category_amount or 0))
+      
+      category_ratio = round(
+        (category_amount / total_amount) * Decimal("100"),
+        2,
+      )
+      
+      # 전월 같은 카테고리 지출액 조회
+      previous_category_amount = self.repository.get_previous_category_amount(
+        user_id=user_id,
+        previous_month=previous_month,
+        category=row.category,
+      )
+      
+      # 전월 지출액도 저장
+      previous_category_amount = abs(Decimal(previous_category_amount or 0))
+      
+      # 전월 대비 증감액 계산
+      spending_diff = category_amount - previous_category_amount
+      
+      if previous_category_amount == 0:
+        spending_change_rate = Decimal("0")
+      else:
+        spending_change_rate = round(
+          (spending_diff / previous_category_amount) * Decimal("100"),
+          2,
+        )
+      
+      category_spending = CategorySpending(
+        summary_id=summary.id,
+        user_id=user_id,
+        month=month,
+        category=row.category,
+        category_amount=category_amount,
+        category_ratio=category_ratio,
+        transaction_count=row.transaction_count,
+        previous_category_amount=previous_category_amount,
+        spending_diff=spending_diff,
+        spending_change_rate=spending_change_rate,
+      )
+      
+      category_spendings.append(category_spending)
+    
+    self.repository.create_category_spendings(category_spendings)
+    
+    self.db.commit()
+    
+    for category_spending in category_spendings:
+      self.db.refresh(category_spending)
+      
+    return category_spendings
     
   
   
