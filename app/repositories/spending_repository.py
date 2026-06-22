@@ -78,7 +78,7 @@ class SpendingAnalysisRepository:
       self.db.query(func.coalesce(func.sum(Transaction.amount), 0))
       .filter(
         Transaction.user_id == user_id,
-        func.date_format(Transaction.trans_date, "%Y-%m") == month,
+        Transaction.month == month,
       )
       .scalar()
     )
@@ -99,8 +99,8 @@ class SpendingAnalysisRepository:
       self.db.query(func.coalesce(func.sum(Transaction.amount), 0))
       .filter(
         Transaction.user_id == user_id,
-        func.date_format(Transaction.trans_date, "%Y-%m") == month,
-        Transaction.is_fixed == True,
+        Transaction.month == month,
+        Transaction.expense_type == "FIXED",
       )
       .scalar()
     )
@@ -120,6 +120,7 @@ class SpendingAnalysisRepository:
       user_id=user_id,
       month=month,
       total_income=data["total_income"],
+      monthly_salary=data["monthly_salary"],
       total_spending=data["total_spending"],
       fixed_expense=data["fixed_expense"],
       variable_expense=data["variable_expense"],
@@ -140,6 +141,7 @@ class SpendingAnalysisRepository:
     """ 기존 월별 요약 수정 """
     
     summary.total_income=data["total_income"],
+    summary.monthly_salary=data["monthly_salary"],
     summary.total_spending=data["total_spending"],
     summary.fixed_expense=data["fixed_expense"],
     summary.variable_expense=data["variable_expense"],
