@@ -5,8 +5,12 @@ from app.core.database import get_db
 from app.schemas.spending_analysis import (
     MonthlyAnalysisRequest,
     MonthlySummaryResponse,
+    CategorySpendingResponse,
 )
-from app.services.spending_analysis_service import SpendingAnalysisService
+from app.services.spending_analysis_service import (
+    SpendingAnalysisService,
+    SpendingService,
+)
 
 router = APIRouter()
 
@@ -68,4 +72,33 @@ def get_monthly_spending_summary(
         month=month,
     )
 
+# --------------------------------------------------------------
+#  카테고리
+# --------------------------------------------------------------
+def get_spending_service(db: Session = Depends(get_db)) -> SpendingService:
+    return SpendingService(db)
+
+@router.post(
+    "/monthly/{month}/categories",
+    response_model=list[CategorySpendingResponse],
+    summary="월별 카테고리별 지출 분석 저장",
+)
+def save_monthly_category_spendings(
+    month: str,
+    db: Session = Depends(get_db),
+):
+    """
+    특정 월의 카테고리별 지출 정보 조회
+    - 카테고리별 지출 금액
+    - 전체 지출 대비 비율
+    """
+    
+    # JWT 인증 완성 후 current_user.id로 변경
+    user_id = 1
+    service = SpendingAnalysisService(db)
+    
+    return service.save_monthly_category_spendings(
+        user_id=user_id,
+        month=month,
+    )
 
