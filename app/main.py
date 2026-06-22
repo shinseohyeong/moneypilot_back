@@ -45,6 +45,6 @@ app.include_router(finance_router.router, prefix="/api/finance", tags=["Finance"
 app.include_router(financial_product_router.router, prefix="/api/financial-products", tags=["Financial Products"])
 app.include_router(news_router.router, prefix="/api/news", tags=["News"])
 app.include_router(spending_router.router, prefix="/api/spending", tags=["Spending"])
-app.include_router(stock_router.router, prefix="/api/stocks", tags=["Stocks"])
+app.include_router(stock_router.router)
 app.include_router(transaction_router.router, prefix="/api/transactions", tags=["Transactions"])
 app.include_router(user_router.router, prefix="/api/users",  tags=["Users"])
