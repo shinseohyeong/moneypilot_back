@@ -4,7 +4,9 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.user_model import FinanceProfile
-from app.models.spending_analysis_model import MonthlySpendingSummary, CategorySpending
+from app.models.spending_analysis_model import (
+  MonthlySpendingSummary, CategorySpending,
+)
 from app.models.transaction_model import Transaction
 
 
@@ -240,4 +242,24 @@ class SpendingRepository:
   ) -> None:
     """ 카테고리별 지출 데이터를 저장 """
     self.db.add_all(category_spendings)
-  
+
+  # --------------------------------------------------------------
+  #  카테고리 - 과소비 항목
+  # --------------------------------------------------------------
+  def get_category_spendings_by_user_and_month(
+    self,
+    user_id: int,
+    month: str,
+  ) -> list[CategorySpending]:
+    """
+    user_id와 month 기준으로 저장된 카테고리별 지출 데이터 조회
+    """
+    
+    return (
+      self.db.query(CategorySpending)
+      .filter(
+        CategorySpending.user_id == user_id,
+        CategorySpending.month == month,
+      )
+      .all()
+    )
