@@ -22,13 +22,30 @@ from app.schemas.stock_price_schema import (
     StockPriceCollectResponse,
 )
 
+from app.repositories.stock_watchlist_repository import StockWatchlistRepository
+from app.services.stock_watchlist_service import StockWatchlistService
+from app.schemas.stock_watchlist_schema import (
+    StockWatchlistCategoryCreate,
+    StockWatchlistCategoryDeleteResponse,
+    StockWatchlistCategoryItem,
+    StockWatchlistCategoryListResponse,
+    StockWatchlistCategoryUpdate,
+    StockWatchlistCreate,
+    StockWatchlistDeleteResponse,
+    StockWatchlistGroupedResponse,
+    StockWatchlistItem,
+    StockWatchlistUpdate,
+)
+
 
 router = APIRouter(
     prefix="/api/v1/stocks",
     tags=["Stocks"],
 )
 
-
+# ====================
+# 주식 조회
+# ====================
 @router.get(
     "/search",
     response_model=StockSearchResponse,
@@ -55,6 +72,145 @@ def get_stock_price_service(db: Session = Depends(get_db)) -> StockPriceService:
     public_stock_client = PublicStockPriceClient()
     return StockPriceService(repository, public_stock_client)
 
+# ====================
+# 관심종목
+# ====================
+def get_stock_watchlist_service(
+    db: Session = Depends(get_db),
+) -> StockWatchlistService:
+    repository = StockWatchlistRepository(db)
+    return StockWatchlistService(repository)
+
+# ============================================================
+# 관심종목 카테고리 API
+# ============================================================
+
+@router.post(
+    "/watchlist/categories",
+    response_model=StockWatchlistCategoryItem,
+    summary="관심종목 카테고리 생성",
+)
+def create_watchlist_category(
+    request: StockWatchlistCategoryCreate,
+    user_id: int = Query(1, description="임시 사용자 ID. 인증 연동 후 current_user로 교체 예정"),
+    service: StockWatchlistService = Depends(get_stock_watchlist_service),
+):
+    return service.create_category(user_id=user_id, request=request)
+
+
+@router.get(
+    "/watchlist/categories",
+    response_model=StockWatchlistCategoryListResponse,
+    summary="관심종목 카테고리 목록 조회",
+)
+def get_watchlist_categories(
+    user_id: int = Query(1, description="임시 사용자 ID. 인증 연동 후 current_user로 교체 예정"),
+    service: StockWatchlistService = Depends(get_stock_watchlist_service),
+):
+    return service.get_categories(user_id=user_id)
+
+
+@router.patch(
+    "/watchlist/categories/{category_id}",
+    response_model=StockWatchlistCategoryItem,
+    summary="관심종목 카테고리 수정",
+)
+def update_watchlist_category(
+    category_id: int,
+    request: StockWatchlistCategoryUpdate,
+    user_id: int = Query(1, description="임시 사용자 ID. 인증 연동 후 current_user로 교체 예정"),
+    service: StockWatchlistService = Depends(get_stock_watchlist_service),
+):
+    return service.update_category(
+        user_id=user_id,
+        category_id=category_id,
+        request=request,
+    )
+
+
+@router.delete(
+    "/watchlist/categories/{category_id}",
+    response_model=StockWatchlistCategoryDeleteResponse,
+    summary="관심종목 카테고리 삭제",
+)
+def delete_watchlist_category(
+    category_id: int,
+    user_id: int = Query(1, description="임시 사용자 ID. 인증 연동 후 current_user로 교체 예정"),
+    service: StockWatchlistService = Depends(get_stock_watchlist_service),
+):
+    return service.delete_category(
+        user_id=user_id,
+        category_id=category_id,
+    )
+
+
+# ============================================================
+# 관심종목 API
+# ============================================================
+
+@router.post(
+    "/watchlist",
+    response_model=StockWatchlistItem,
+    summary="관심종목 추가",
+)
+def create_watchlist(
+    request: StockWatchlistCreate,
+    user_id: int = Query(1, description="임시 사용자 ID. 인증 연동 후 current_user로 교체 예정"),
+    service: StockWatchlistService = Depends(get_stock_watchlist_service),
+):
+    return service.create_watchlist(user_id=user_id, request=request)
+
+
+@router.get(
+    "/watchlist",
+    response_model=StockWatchlistGroupedResponse,
+    summary="관심종목 목록 조회",
+)
+def get_watchlists(
+    user_id: int = Query(1, description="임시 사용자 ID. 인증 연동 후 current_user로 교체 예정"),
+    service: StockWatchlistService = Depends(get_stock_watchlist_service),
+):
+    return service.get_watchlists(user_id=user_id)
+
+
+@router.patch(
+    "/watchlist/{watchlist_id}",
+    response_model=StockWatchlistItem,
+    summary="관심종목 수정",
+)
+def update_watchlist(
+    watchlist_id: int,
+    request: StockWatchlistUpdate,
+    user_id: int = Query(1, description="임시 사용자 ID. 인증 연동 후 current_user로 교체 예정"),
+    service: StockWatchlistService = Depends(get_stock_watchlist_service),
+):
+    return service.update_watchlist(
+        user_id=user_id,
+        watchlist_id=watchlist_id,
+        request=request,
+    )
+
+
+@router.delete(
+    "/watchlist/{watchlist_id}",
+    response_model=StockWatchlistDeleteResponse,
+    summary="관심종목 삭제",
+)
+def delete_watchlist(
+    watchlist_id: int,
+    user_id: int = Query(1, description="임시 사용자 ID. 인증 연동 후 current_user로 교체 예정"),
+    service: StockWatchlistService = Depends(get_stock_watchlist_service),
+):
+    return service.delete_watchlist(
+        user_id=user_id,
+        watchlist_id=watchlist_id,
+    )
+
+
+
+# ====================
+# 차트/시세 조회
+# ====================
 
 @router.get(
     "/{stock_id}/price",
@@ -81,6 +237,9 @@ def get_stock_chart(
     return service.get_chart(stock_id=stock_id, period=period)
 
 
+# ====================
+# 공공데이터 주식 시세 수집
+# ====================
 @router.post(
     "/{stock_id}/prices/collect",
     response_model=StockPriceCollectResponse,
