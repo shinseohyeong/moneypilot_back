@@ -210,6 +210,26 @@ class SpendingService:
     self.db = db
     self.repository = SpendingRepository(db)
   
+  def validate_month_format(self, month:str) -> None:
+    """
+    month가 YYYY-MM 형식인지 검증한다.
+    ex) 2026-06
+    """
+    
+    if not re.match(r"^\d{4}-\d{2}$", month):
+      raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="month는 YYYY-MM 형식이어야 합니다. ex) 2026-06",
+      )
+      
+    try:
+      datetime.strptime(month, "%Y-%m")
+    except ValueError:
+      raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="올바르지 않은 month 값입니다. ex) 2026-06",
+      )
+  
   def save_monthly_category_spendings(
     self,
     user_id: int,
@@ -318,4 +338,110 @@ class SpendingService:
     return category_spendings
     
   
+  def _build_top_spending_item(self, item) -> dict:
+    """ 이번 달 지출 금액이 큰 카테고리 응답 데이터 만듬 """
+    
+    category_amount = Decimal(item.category_amount or 0)
+    category_ratio = Decimal(item.category_ratio or 0)
+    previous_category_amount = Decimal(item.previous_category_amount or 0)
+    spending_diff = Decimal(item.spending_diff or 0)
+    spending_change_rate = Decimal(item.spending_change_rate or 0)
+    
+    return {
+      "category": item.category,
+      "category_amount": category_amount,
+      "category_ratio" : category_ratio,
+      "previous_category_amount" : previous_category_amount,
+      "spending_diff" : spending_diff,
+      "spending_change_rate" : spending_change_rate,
+      "reason" : f"{item.category} 카테고리는 이번 달 {int(category_amount):,}원으로 지출 금액이 높은 항목입니다.",
+    }
+    
   
+  def _build_top_increased_item(self, item) -> dict:
+    """ 전월 대비 증가액이 큰 카테고리 응답 데이터 만듬 """
+    
+    category_amount = Decimal(item.category_amount or 0)
+    category_ratio = Decimal(item.category_ratio or 0)
+    previous_category_amount = Decimal(item.previous_category_amount or 0)
+    spending_diff = Decimal(item.spending_diff or 0)
+    spending_change_rate = Decimal(item.spending_change_rate or 0)
+    
+    return {
+      "category": item.category,
+      "category_amount": category_amount,
+      "category_ratio" : category_ratio,
+      "previous_category_amount" : previous_category_amount,
+      "spending_diff" : spending_diff,
+      "spending_change_rate" : spending_change_rate,
+      "reason" : f"{item.category} 카테고리는 전월보다 {int(spending_diff):,}원 증가했습니다.",
+    }
+    
+    
+  def get_monthly_overspending_categories(
+    self,
+    user_id: int, 
+    month: str,
+  ) -> dict:
+    """
+    월별 과소비 카테고리 후보 조회
+    기준: 
+    1. 이번달 지출 금액이 큰 카테고리 TOP 3
+    2. 전월 대비 증가액이 큰 카테고리 TOP 3
+    """
+    
+    self.validate_month_format(month)
+    
+    summary = self.repository.get_monthly_summary_by_user_and_month(
+      user_id=user_id,
+      month=month,
+    )
+    
+    if not summary:
+      raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="해당 월의 월별 요약 데이터가 없습니다. 먼저 월별 분석을 실행해주세요.",
+      )
+    
+    category_spendings = self.repository.get_category_spendings_by_user_and_month(
+      user_id=user_id,
+      month=month,
+    )
+    
+    if not category_spendings:
+      raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="해당 월의 카테고리 분석 데이터가 없습니다. 먼저 카테고리 분석을 실행해주세요.",
+      )
+    
+    # 1. 이번 달 가장 많이 쓴 카테고리 TOP 3
+    top_spending_categories = sorted(
+      category_spendings,
+      key=lambda item: Decimal(item.category_amount or 0),
+      reverse=True,
+    )[:3]
+    
+    # 2. 전월보다 많이 늘어난 카테고리 TOP 3
+    increased_categories = [
+      item
+      for item in category_spendings
+      if Decimal(item.spending_diff or 0) > 0
+    ]
+    
+    top_increased_categories = sorted(
+      increased_categories,
+      key=lambda item: Decimal(item.spending_diff or 0),
+      reverse=True,
+    )[:3]
+
+    return {
+      "month": month,
+      "top_spending_categories": [
+        self._build_top_spending_item(item)
+        for item in top_spending_categories
+      ],
+      "top_increased_categories": [
+        self._build_top_increased_item(item)
+        for item in top_increased_categories
+      ],
+    }
