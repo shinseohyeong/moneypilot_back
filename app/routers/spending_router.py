@@ -6,6 +6,7 @@ from app.schemas.spending_analysis import (
     MonthlyAnalysisRequest,
     MonthlySummaryResponse,
     CategorySpendingResponse,
+    MonthlyOverspendingResponse,
 )
 from app.services.spending_analysis_service import (
     SpendingAnalysisService,
@@ -106,3 +107,28 @@ def save_monthly_category_spendings(
         month=month,
     )
 
+# --------------------------------------------------------------
+#  카테고리 - 과소비
+# --------------------------------------------------------------
+@router.get(
+    "/monthly/{month}/overspending",
+    response_model=MonthlyOverspendingResponse,
+    summary="월별 과소비 카테고리 조회",
+)
+def get_monthly_overspending_categories(
+    month: str,
+    service: SpendingService = Depends(get_spending_service),
+):
+    """
+    월별 과소비 카테고리 후보 조회
+    기준 :
+    - 이번 달 가장 많이 쓴 카테고리 TOP 3
+    - 전월보다 많이 늘어난 카테고리 TOP 3
+    """
+    # JWT 인증 완성 후 current_user.id로 변경
+    user_id = 1
+    
+    return service.get_monthly_overspending_categories(
+        user_id=user_id,
+        month=month,
+    )
