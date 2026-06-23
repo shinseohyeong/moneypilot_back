@@ -49,7 +49,7 @@ class StockPriceRepository:
 
     def upsert_stock_price(self, price_data: dict) -> StockPrice:
         """
-        같은 stock_id + price_date 데이터가 있으면 UPDATE,
+        같은 stock_id + price_date + source 데이터가 있으면 UPDATE,
         없으면 INSERT.
         """
         existing_price = (
@@ -57,6 +57,7 @@ class StockPriceRepository:
             .filter(
                 StockPrice.stock_id == price_data["stock_id"],
                 StockPrice.price_date == price_data["price_date"],
+                StockPrice.source == price_data["source"],
             )
             .first()
         )
