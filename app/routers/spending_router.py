@@ -75,6 +75,11 @@ def get_monthly_spending_summary(
 # --------------------------------------------------------------
 #  카테고리
 # --------------------------------------------------------------
+def get_spending_analysis_service(
+    db: Session = Depends(get_db),
+) -> SpendingAnalysisService:
+    return SpendingAnalysisService(db)
+
 def get_spending_service(db: Session = Depends(get_db)) -> SpendingService:
     return SpendingService(db)
 
@@ -85,7 +90,7 @@ def get_spending_service(db: Session = Depends(get_db)) -> SpendingService:
 )
 def save_monthly_category_spendings(
     month: str,
-    db: Session = Depends(get_db),
+    service: SpendingService = Depends(get_spending_service),
 ):
     """
     특정 월의 카테고리별 지출 정보 조회
@@ -95,7 +100,6 @@ def save_monthly_category_spendings(
     
     # JWT 인증 완성 후 current_user.id로 변경
     user_id = 1
-    service = SpendingAnalysisService(db)
     
     return service.save_monthly_category_spendings(
         user_id=user_id,
