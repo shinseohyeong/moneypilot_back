@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, Path, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.schemas.stock_schema import StockSearchResponse
+from app.schemas.stock_schema import StockSearchResponse, StockSearchResponse, StockDetailResponse
 from app.services.stock_service import StockService
 
 from app.clients.public_stock_price_client import PublicStockPriceClient
@@ -251,3 +251,19 @@ def collect_stock_prices(
     service: StockPriceService = Depends(get_stock_price_service),
 ):
     return service.collect_stock_prices(stock_id=stock_id, days=days)
+
+# ====================
+# 종목 상세 조회
+# ====================
+@router.get(
+    "/{stock_id}",
+    response_model=StockDetailResponse,
+    summary="종목 상세 조회",
+    description="특정 종목의 기본 정보와 최근 기준 시세를 조회합니다.",
+)
+def get_stock_detail(
+    stock_id: int = Path(..., description="stocks 테이블의 id"),
+    db: Session = Depends(get_db),
+):
+    stock_service = StockService(db)
+    return stock_service.get_stock_detail(stock_id=stock_id)

@@ -7,7 +7,7 @@ from typing import List, Optional
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from app.models.stock_model import Stock
+from app.models.stock_model import Stock, StockPrice
 
 
 class StockRepository:
@@ -56,3 +56,35 @@ class StockRepository:
         # stock_name 컬럼 기준으로 오름차순 정렬
         # 검색 결과가 너무 많이 나오지 않도록 limit을 건다.
         return query.order_by(Stock.stock_name.asc()).limit(limit).all()
+    
+    def get_stock_by_id(self, stock_id: int) -> Optional[Stock]:
+        """
+        stock_id로 종목 기본 정보를 조회합니다.
+
+        stock_id는 stocks 테이블의 id 값입니다.
+        """
+        return (
+            self.db.query(Stock)
+            .filter(
+                Stock.id == stock_id,
+                Stock.is_active == True,
+            )
+            .first()
+        )
+
+    def get_latest_price_by_stock_id(self, stock_id: int) -> Optional[StockPrice]:
+        """
+        특정 종목의 최근 기준 시세를 조회합니다.
+
+        실시간 현재가가 아니라 stock_prices 테이블에 저장된
+        가장 최신 price_date 데이터를 가져옵니다.
+        """
+        return (
+            self.db.query(StockPrice)
+            .filter(
+                StockPrice.stock_id == stock_id,
+                StockPrice.source == "PUBLIC_DATA",
+            )
+            .order_by(StockPrice.price_date.desc())
+            .first()
+        )
