@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, field_serializer
 from typing import List, Optional
 from datetime import datetime
 from decimal import Decimal
@@ -90,3 +90,42 @@ class CategorySpendingResponse(BaseModel):
   
   class Config:
     from_attributes = True
+  
+
+class OverspendingCategoryItemResponse(BaseModel):
+  """ 과소비 카테고리 항목 응답 """
+  category: str
+  category_amount: Decimal
+  category_ratio: Decimal
+  previous_category_amount: Decimal
+  spending_diff: Decimal
+  spending_change_rate: Decimal
+  reason: str
+  
+  @field_serializer(
+    "category_amount",
+    "previous_category_amount",
+    "spending_diff",
+  )
+  def serialize_decimal_to_int(self, value: Decimal) -> int:
+    return int(value or 0)
+
+  @field_serializer(
+    "category_ratio",
+    "spending_change_rate",
+  )
+  def serialize_decimal_to_float(self, value: Decimal) -> float:
+    return float(value or 0)
+
+  class Config:
+    from_attributes = True
+
+
+class MonthlyOverspendingResponse(BaseModel):
+  """ 월별 과소비 카테고리 응답 """
+  month: str 
+  top_spending_categories: list[OverspendingCategoryItemResponse]
+  top_increased_categories: list[OverspendingCategoryItemResponse]
+  
+  
+  
