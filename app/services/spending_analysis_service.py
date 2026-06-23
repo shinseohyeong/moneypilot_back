@@ -240,7 +240,7 @@ class SpendingService:
       )
     
     #  현재 month 기준으로 전월 계산
-    current_month_date = datetime.strftime(month, "%Y-%m")
+    current_month_date = datetime.strptime(month, "%Y-%m")
     previous_month = (
       current_month_date - relativedelta(months=1)
     ).strftime("%Y-%m")
