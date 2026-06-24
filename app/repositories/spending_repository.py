@@ -1,13 +1,16 @@
 from decimal import Decimal
 
-from sqlalchemy import func
+from sqlalchemy import func, case
 from sqlalchemy.orm import Session
 
 from app.models.user_model import FinanceProfile
 from app.models.spending_analysis_model import (
   MonthlySpendingSummary, CategorySpending,
+  CardSpending
 )
 from app.models.transaction_model import Transaction
+from app.models.card_statement_model import CardStatement
+
 
 
 class SpendingAnalysisRepository:
@@ -261,5 +264,91 @@ class SpendingRepository:
         CategorySpending.user_id == user_id,
         CategorySpending.month == month,
       )
+      .all()
+    )
+  
+  # --------------------------------------------------------------
+  #  카드별 사용금액 조회
+  # --------------------------------------------------------------
+  def get_card_totals_by_user_and_month(
+    self, 
+    user_id: int,
+    month: str,
+  ):
+    """
+    특정 월의 카드별/현금별 사용금액 계산
+    기준:
+    - statement_id가 있으면 card_statements.card_name 기준으로 계산
+    - statement_id가 NULL이면 '현금'으로 계산
+    """
+    card_name_expr = case(
+      (
+        Transaction.statement_id.is_(None),
+        "현금",
+      ),
+      (
+        CardStatement.card_name.is_(None),
+        "현금",
+      ),
+      (
+        CardStatement.card_name == "",
+        "현금",
+      ),
+      else_=CardStatement.card_name,
+    )
+    
+    return (
+      self.db.query(
+        card_name_expr.label("card_name"),
+        func.coalesce(func.sum(func.abs(Transaction.amount)), 0).label("card_amount"),
+        func.count(Transaction.id).label("transaction_count"),
+      )
+      .outerjoin(
+        CardStatement,
+        Transaction.statement_id == CardStatement.id,
+      )
+      .filter(
+        Transaction.user_id == user_id,
+        Transaction.month == month,
+      )
+      .group_by(card_name_expr)
+      .order_by(func.sum(func.abs(Transaction.amount)).desc())
+      .all()
+    )
+    
+  
+  def delete_card_spendings_by_summary_id(
+    self,
+    summary_id: int,
+  ) -> None:
+    """ 특정 월별 요약에 연결된 카드별 사용금액 데이터 삭제 """
+    
+    self.db.query(CardSpending).filter(
+      CardSpending.summary_id == summary_id
+    ).delete()
+  
+  
+  def create_card_spendings(
+    self,
+    card_spendings: list[CardSpending],
+  ) -> None:
+    """ 카드별 사용금액 데이터를 저장 """
+    self.db.add_all(card_spendings)
+
+
+  def get_card_spendings_by_user_and_month(
+    self,
+    user_id: int,
+    month: str, 
+  ) -> list[CardSpending]:
+    """ 저장된 월별 카드별 사용금액 데이터 조회 """
+    
+    return (
+      self.db.query(CardSpending)
+      .filter(
+        CardSpending.user_id == user_id,
+        CardSpending.month == month,
+      )
+      .order_by(CardSpending.card_amount.desc())
       .all()
     )
