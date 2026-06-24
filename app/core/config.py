@@ -39,6 +39,18 @@ class Settings:
         or ""
     ).strip()
 
+    # LLM / OpenAI 설정
+    llm_provider: str = (os.getenv("LLM_PROVIDER", "openai") or "openai").strip()
+
+    openai_api_key: str = (os.getenv("OPENAI_API_KEY") or "").strip()
+    openai_model: str = (os.getenv("OPENAI_MODEL", "gpt-4o-mini") or "").strip()
+
+    # 나중에 Ollama 테스트할 때 사용할 예정
+    ollama_base_url: str = (
+        os.getenv("OLLAMA_BASE_URL", "http://localhost:11434") or ""
+    ).strip()
+    ollama_model: str = (os.getenv("OLLAMA_MODEL", "llama3.1") or "").strip()
+
     @property
     def DATABASE_URL(self) -> str:
         return (

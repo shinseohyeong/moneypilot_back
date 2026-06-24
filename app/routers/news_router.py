@@ -16,6 +16,11 @@ from app.schemas.news_schema import (
     StockNewsCollectRequest,
 )
 from app.services.news_service import NewsService
+from app.schemas.news_summary_schema import (
+    NewsSummaryCreateRequest,
+    NewsSummaryResponse,
+)
+from app.services.news_summary_service import NewsSummaryService
 
 router = APIRouter(prefix="/api/v1", tags=["News"])
 
@@ -28,6 +33,11 @@ def get_news_service(db: Session = Depends(get_db)) -> NewsService:
     """
     return NewsService(db)
 
+def get_news_summary_service(db: Session = Depends(get_db)) -> NewsSummaryService:
+    """
+    뉴스 요약 service 객체를 생성합니다.
+    """
+    return NewsSummaryService(db)
 
 @router.post(
     "/news/economy/collect",
@@ -101,3 +111,39 @@ def get_stock_news(
         stock_id=stock_id,
         limit=limit,
     )
+
+@router.post(
+    "/news/{news_id}/summary",
+    response_model=NewsSummaryResponse,
+    summary="뉴스 요약 생성",
+)
+def create_news_summary(
+    news_id: int,
+    request: NewsSummaryCreateRequest,
+    service: NewsSummaryService = Depends(get_news_summary_service),
+):
+    """
+    특정 뉴스의 LLM 요약을 생성합니다.
+
+    - 이미 요약이 있으면 기본적으로 기존 요약을 반환합니다.
+    - force_refresh=true이면 다시 요약합니다.
+    """
+    return service.create_news_summary(
+        news_id=news_id,
+        force_refresh=request.force_refresh,
+    )
+
+
+@router.get(
+    "/news/{news_id}/summary",
+    response_model=NewsSummaryResponse,
+    summary="뉴스 요약 조회",
+)
+def get_news_summary(
+    news_id: int,
+    service: NewsSummaryService = Depends(get_news_summary_service),
+):
+    """
+    저장된 뉴스 요약을 조회합니다.
+    """
+    return service.get_news_summary(news_id=news_id)
