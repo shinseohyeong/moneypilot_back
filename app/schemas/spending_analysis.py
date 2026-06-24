@@ -143,5 +143,23 @@ class ExpenseTypesResponse(BaseModel):
   fixed_expense: ExpenseTypeItemResponse
   variable_expense: ExpenseTypeItemResponse
   
+# --------------------------------------------------------------
+#  카드별 사용금액 조회
+# --------------------------------------------------------------
+class CardSpendingItemResponse(BaseModel):
+  """ 카드별 사용금액 항목 응답 """
+  card_name: str
+  card_amount: int
+  card_ratio: float
+  transaction_count: int
+
+class MonthlyCardSpendingResponse(BaseModel):
+  """ 월별 카드별 사용금액 조회 응답 """
+  month: str 
+  total_spending: int
+  cards: list[CardSpendingItemResponse]
+
+
+  
   
   
