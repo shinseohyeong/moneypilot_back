@@ -7,7 +7,8 @@ from app.schemas.spending_analysis import (
     MonthlySummaryResponse,
     CategorySpendingResponse,
     MonthlyOverspendingResponse,
-    ExpenseTypesResponse
+    ExpenseTypesResponse,
+    MonthlyCardSpendingResponse
 )
 from app.services.spending_analysis_service import (
     SpendingAnalysisService,
@@ -15,6 +16,15 @@ from app.services.spending_analysis_service import (
 )
 
 router = APIRouter()
+
+
+def get_spending_analysis_service(
+    db: Session = Depends(get_db),
+) -> SpendingAnalysisService:
+    return SpendingAnalysisService(db)
+
+def get_spending_service(db: Session = Depends(get_db)) -> SpendingService:
+    return SpendingService(db)
 
 
 @router.post(
@@ -106,14 +116,6 @@ def get_monthly_expense_types(
 # --------------------------------------------------------------
 #  카테고리
 # --------------------------------------------------------------
-def get_spending_analysis_service(
-    db: Session = Depends(get_db),
-) -> SpendingAnalysisService:
-    return SpendingAnalysisService(db)
-
-def get_spending_service(db: Session = Depends(get_db)) -> SpendingService:
-    return SpendingService(db)
-
 @router.post(
     "/monthly/{month}/categories",
     response_model=list[CategorySpendingResponse],
@@ -159,6 +161,63 @@ def get_monthly_overspending_categories(
     user_id = 1
     
     return service.get_monthly_overspending_categories(
+        user_id=user_id,
+        month=month,
+    )
+
+# --------------------------------------------------------------
+#  카드별/현금별 사용금액 조회
+# --------------------------------------------------------------
+@router.post(
+    "/monthly/{month}/cards",
+    response_model=MonthlyCardSpendingResponse,
+    summary="월별 카드별 사용금액 분석 저장",
+)
+def save_monthly_card_spendings(
+    month: str,
+    service: SpendingService = Depends(get_spending_service),
+):
+    """
+    특정 월의 거래내역을 카드별/현금별로 합산하여 저장
+    - statement_id가 있는 거래는 카드명 기준으로 계산
+    - statement_id가 없는 거래는 현금으로 계산
+    - 총지출 대비 사용비율 계산
+    """
+    # JWT 인증 완성 후 current_user.id로 변경
+    user_id = 1
+    
+    card_spendings = service.save_monthly_card_spendings(
+        user_id=user_id,
+        month=month,
+    )
+    
+    return service.get_monthly_card_spendings(
+        user_id=user_id,
+        month=month,
+    )
+    
+    
+@router.get(
+    "/monthly/{month}/cards",
+    response_model=MonthlyCardSpendingResponse,
+    summary="월별 카드별 사용금액 조회",
+)
+def get_monthly_card_spendings(
+    month: str,
+    service: SpendingService = Depends(get_spending_service),
+):
+    """
+    저장된 월별 카드별 사용금액 조회
+    - 카드명
+    - 카드별 사용금액
+    - 현금 사용금액
+    - 총지출 대비 사용비율
+    """
+    
+    # JWT 인증 완성 후 current_user.id로 변경
+    user_id = 1
+    
+    return service.get_monthly_card_spendings(
         user_id=user_id,
         month=month,
     )
