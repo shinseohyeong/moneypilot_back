@@ -16,9 +16,12 @@ class UserProfileUpdate(BaseModel):
 <<<<<<< Updated upstream
     """내 정보 수정 (username, phone, password 중 전달된 것만)"""
     username: Optional[str] = Field(None, min_length=2, max_length=100)
+<<<<<<< Updated upstream
     phone: Optional[str] = Field(None, max_length=30)
 =======
     username: Optional[str] = Field(None, min_length=2, max_length=100)
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
     password: Optional[str] = Field(None, min_length=8, max_length=128)
 
@@ -28,9 +31,13 @@ class UserResponse(BaseModel):
     email: str
     username: str
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
     phone: Optional[str]
     login_type: str
     role: str
+=======
+    login_type: str
+>>>>>>> Stashed changes
 =======
     login_type: str
 >>>>>>> Stashed changes
