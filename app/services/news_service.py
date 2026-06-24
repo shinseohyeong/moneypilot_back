@@ -47,14 +47,19 @@ class NewsService:
         경제 뉴스 수집
 
         흐름:
-        1. 네이버 뉴스 API 호출
-        2. url_hash 기준으로 중복 확인
-        3. 새 뉴스만 news_articles에 저장
-        4. commit
+        1. query 값 정리
+        2. 네이버 뉴스 API 호출
+        3. url_hash 기준으로 중복 확인
+        4. 새 뉴스만 news_articles에 저장
+        5. commit
         """
+
+        normalized_query = self._normalize_query(query)
+        search_query = normalized_query or "경제"
+
         try:
             raw_items = self.client.search_news(
-                query=query,
+                query=search_query,
                 display=display,
                 start=1,
                 sort=sort,
@@ -67,7 +72,7 @@ class NewsService:
             for item in raw_items:
                 article, is_created = self._get_or_create_article_from_naver_item(
                     item=item,
-                    search_keyword=query,
+                    search_keyword=search_query,
                 )
 
                 if is_created:
@@ -80,7 +85,7 @@ class NewsService:
             self.db.commit()
 
             return {
-                "query": query,
+                "query": search_query,
                 "requested_count": display,
                 "fetched_count": len(raw_items),
                 "saved_count": len(saved_items),
@@ -124,7 +129,8 @@ class NewsService:
                 detail="해당 종목을 찾을 수 없습니다.",
             )
 
-        search_query = query or f"{stock.stock_name} 주식"
+        normalized_query = self._normalize_query(query)
+        search_query = normalized_query or f"{stock.stock_name} 주식"
 
         try:
             raw_items = self.client.search_news(
@@ -404,3 +410,21 @@ class NewsService:
             return netloc.replace("www.", "")
         except Exception:
             return None
+        
+    def _normalize_query(self, query: Optional[str]) -> Optional[str]:
+        """
+        Swagger나 프론트에서 query가 문자열 'null', 'undefined', 빈 문자열로 들어오는 경우
+        실제 검색어로 쓰지 않도록 None으로 변환합니다.
+        """
+        if query is None:
+            return None
+
+        cleaned = query.strip()
+
+        if not cleaned:
+            return None
+
+        if cleaned.lower() in ("null", "none", "undefined", "string"):
+            return None
+
+        return cleaned
