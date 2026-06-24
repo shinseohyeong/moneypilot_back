@@ -7,6 +7,7 @@ from app.schemas.spending_analysis import (
     MonthlySummaryResponse,
     CategorySpendingResponse,
     MonthlyOverspendingResponse,
+    ExpenseTypesResponse
 )
 from app.services.spending_analysis_service import (
     SpendingAnalysisService,
@@ -72,6 +73,35 @@ def get_monthly_spending_summary(
         user_id=user_id,
         month=month,
     )
+    
+# --------------------------------------------------------------
+#  월별 고정비 / 변동비 조회
+# --------------------------------------------------------------
+@router.get(
+    "/monthly/{month}/expense-types",
+    response_model=ExpenseTypesResponse,
+    summary="월별 고정비/변동비 조회",
+)
+def get_monthly_expense_types(
+    month: str,
+    db: Session = Depends(get_db),
+):
+    """
+    월별 고정비/변동비 금액과 총수입 대비 비율 조회
+    - fixed_expense.amount: 고정비 금액
+    - fixed_expense.ratio: 총수입 대비 고정비 비율
+    - variable_expense.amount: 변동비 금액
+    - variable_expense.ratio: 총수입 대비 변동비 비율
+    """
+    # JWT 인증 완성 후 current_user.id로 변경
+    user_id = 1
+    service = SpendingAnalysisService(db)
+    
+    return service.get_monthly_expense_types(
+        user_id=user_id,
+        month=month,
+    )
+    
 
 # --------------------------------------------------------------
 #  카테고리
