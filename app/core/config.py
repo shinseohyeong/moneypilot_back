@@ -1,8 +1,7 @@
 # .env 읽기, DB URL, JWT 설정
 import os
-
 from dotenv import load_dotenv
-
+from pydantic_settings import BaseSettings
 
 load_dotenv()
 
@@ -13,6 +12,13 @@ class Settings:
     DB_USER: str = os.getenv("DB_USER", "root")
     DB_PASSWORD: str = os.getenv("DB_PASSWORD", "")
     DB_NAME: str = os.getenv("DB_NAME", "")
+    FINANCE_API_KEY: str = os.getenv("FINANCE_API_KEY", "")
+
+    # ── JWT (1번 담당 추가) ──────────────────
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")
+    ALGORITHM: str = os.getenv("ALGORITHM", "HS256")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+    REFRESH_TOKEN_EXPIRE_DAYS: int = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
 
     @property
     def DATABASE_URL(self) -> str:
@@ -21,6 +27,9 @@ class Settings:
             f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
             "?charset=utf8mb4"
         )
+
+    class Config:
+        env_file = ".env"
 
 
 settings = Settings()
