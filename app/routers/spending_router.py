@@ -51,7 +51,7 @@ def analyze_monthly_spending(
 @router.get(
     "/monthly/{month}",
     response_model=MonthlySummaryResponse,
-    summary="월별 요약 조회",
+    summary="월별 요약(총수입, 월급, 총지출, 고정비, 변동비, 여유자금, 전월대비 지출증감액, 전월 대비 지출 증감률) 조회",
 )
 def get_monthly_spending_summary(
     month: str,
@@ -80,7 +80,7 @@ def get_monthly_spending_summary(
 @router.get(
     "/monthly/{month}/expense-types",
     response_model=ExpenseTypesResponse,
-    summary="월별 고정비/변동비 조회",
+    summary="월별 고정/변동 금액, 총지출 기준 고정/변동 비율 조회",
 )
 def get_monthly_expense_types(
     month: str,
