@@ -6,7 +6,7 @@ from dateutil.relativedelta import relativedelta
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.models.spending_analysis_model import CategorySpending
+from app.models.spending_analysis_model import CategorySpending, CardSpending
 from app.repositories.spending_repository import SpendingAnalysisRepository, SpendingRepository
 
 
@@ -501,5 +501,134 @@ class SpendingService:
       "top_increased_categories": [
         self._build_top_increased_item(item)
         for item in top_increased_categories
+      ],
+    }
+    
+  # --------------------------------------------------------------
+  #  카드별/현금별 사용금액 조회
+  # --------------------------------------------------------------
+  def save_monthly_card_spendings(
+    self,
+    user_id: int,
+    month: str,
+  ) -> list[CardSpending]:
+    """
+    특정 월의 거래내역을 카드별/현금별로 합산하여 저장
+    처리 흐름:
+    1. 월별 요약 데이터 확인
+    2. transactions와 card_statements 기준으로 카드별 사용금액 계산
+    3. statement_id가 없는 거래 -> "현금" 처리
+    4. 총지출 대비 카드별 사용비율 계산
+    5. 기존 카드별 사용금액 데이터를 삭제한 뒤 새로 저장
+    """
+    summary = self.repository.get_monthly_summary_by_user_and_month(
+      user_id=user_id,
+      month=month,
+    )
+    
+    if not summary:
+      raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="해당 월의 월별 요약 데이터가 없습니다. 먼저 월별 분석을 실행해주세요.",
+      )
+      
+    total_spending = Decimal(summary.total_spending or 0)
+    
+    if total_spending == 0:
+      raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="총지출이 0원이라 카드별 사용비율을 계산할 수 없습니다.",
+      )
+    
+    card_totals = self.repository.get_card_totals_by_user_and_month(
+      user_id=user_id,
+      month=month,
+    )
+    
+    if not card_totals:
+      raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="해당 월의 카드/현금 거래내역이 없습니다.",
+      )
+      
+    try:
+      self.repository.delete_card_spendings_by_summary_id(
+        summary_id=summary.id,
+      )
+      
+      card_spendings = []
+      
+      for row in card_totals:
+        card_amount = Decimal(row.card_amount or 0)
+        
+        card_ratio = (
+          card_amount / total_spending * Decimal("100")
+        ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        
+        card_spending = CardSpending(
+          summary_id = summary.id,
+          user_id=user_id,
+          month=month,
+          card_name=row.card_name or "현금",
+          card_amount=card_amount,
+          card_ratio=card_ratio,
+          transaction_count=row.transaction_count,
+        )
+        
+        card_spendings.append(card_spending)
+        
+      self.repository.create_card_spendings(card_spendings)
+      
+      self.db.commit()
+      
+      for card_spending in card_spendings:
+        self.db.refresh(card_spending)
+      
+      return card_spendings
+    
+    except Exception:
+      self.db.rollback()
+      raise
+  
+  
+  def get_monthly_card_spendings(
+    self,
+    user_id: int,
+    month: str,
+  ) -> dict:
+    """ 저장된 월별 카드별 사용금액 조회 """
+    summary = self.repository.get_monthly_summary_by_user_and_month(
+      user_id=user_id,
+      month=month,
+    )
+    
+    if not summary:
+      raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="해당 월의 월별 요약 데이터가 없스빈다. 먼저 월별 분석을 실행해주세요.",
+      )
+      
+    card_spendings = self.repository.get_card_spendings_by_user_and_month(
+      user_id=user_id,
+      month=month,
+    )
+    
+    if not card_spendings:
+      raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="해당 월의 카드벼 사용금액 데이터가 없습니다. 먼저 카드별 분석을 실행해주세요.",
+      )
+      
+    return {
+      "month": month,
+      "total_spending": int(Decimal(summary.total_spending or 0)),
+      "cards": [
+        {
+          "card_name": item.card_name,
+          "card_amount": int(Decimal(item.card_amount or 0)),
+          "card_ratio": int(Decimal(item.card_ratio or 0)),
+          "transaction_count": item.transaction_count,
+        }
+        for item in card_spendings
       ],
     }
