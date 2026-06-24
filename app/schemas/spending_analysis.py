@@ -126,6 +126,22 @@ class MonthlyOverspendingResponse(BaseModel):
   month: str 
   top_spending_categories: list[OverspendingCategoryItemResponse]
   top_increased_categories: list[OverspendingCategoryItemResponse]
+
+
+# --------------------------------------------------------------
+#  고정비 / 변동비 항목 조회
+# --------------------------------------------------------------
+class ExpenseTypeItemResponse(BaseModel):
+  """ 고정비/변동비 항목 응답 """
+  amount: int
+  ratio: float
+
+class ExpenseTypesResponse(BaseModel):
+  """ 월별 고정비/변동비 조회 응답 """
+  month: str
+  total_spending: int
+  fixed_expense: ExpenseTypeItemResponse
+  variable_expense: ExpenseTypeItemResponse
   
   
   
