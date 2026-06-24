@@ -200,6 +200,64 @@ class SpendingAnalysisService:
       )
     
     return summary
+  
+  # --------------------------------------------------------------
+  #  고정비 / 변동비 조회
+  # --------------------------------------------------------------
+  def get_monthly_expense_types(
+    self,
+    user_id: int,
+    month: str,
+  ) -> dict:
+    """
+    월별 고정비/변동비 금액과 총지출 대비 비율 조회
+    계산 기준:
+    - 고정비 비율 = 고정비 / 총지출 * 100
+    - 변동비 비율 = 변동비 / 총지출 * 100
+    """
+    
+    self.validate_month_format(month)
+    
+    summary = self.repository.get_monthly_summary(
+      user_id=user_id,
+      month=month,
+    )
+    
+    if not summary:
+      raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="해당 월의 소비 요약 데이터가 없습니다. 먼저 월별 분석을 실행해주세요.",
+      )
+    
+    total_spending = Decimal(summary.total_spending or 0)
+    fixed_expense = Decimal(summary.fixed_expense or 0)
+    variable_expense = Decimal(summary.variable_expense or 0)
+    
+    if total_spending == 0:
+      fixed_ratio = Decimal("0")
+      variable_ratio = Decimal("0")
+    else:
+      fixed_ratio = (
+        fixed_expense / total_spending * Decimal("100")
+      ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+      
+      variable_ratio = (
+        variable_expense / total_spending * Decimal("100")
+      ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+      
+    return {
+      "month": month,
+      "total_spending": int(total_spending),
+      "fixed_expense": {
+        "amount": int(fixed_expense),
+        "ratio": float(fixed_ratio),
+      },
+      "variable_expense": {
+        "amount": int(variable_expense),
+        "ratio": float(variable_ratio),
+      },
+    }
+      
 
 
 # --------------------------------------------------------------
