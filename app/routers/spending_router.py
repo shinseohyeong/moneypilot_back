@@ -8,7 +8,8 @@ from app.schemas.spending_analysis import (
     CategorySpendingResponse,
     MonthlyOverspendingResponse,
     ExpenseTypesResponse,
-    MonthlyCardSpendingResponse
+    MonthlyCardSpendingResponse,
+    MonthlySpendingForecastResponse,
 )
 from app.services.spending_analysis_service import (
     SpendingAnalysisService,
@@ -219,5 +220,26 @@ def get_monthly_card_spendings(
     
     return service.get_monthly_card_spendings(
         user_id=user_id,
+        month=month,
+    )
+
+# --------------------------------------------------------------
+#  월별 사용금액 예측 조회
+# --------------------------------------------------------------
+@router.get(
+    "/monthly/{month}/forecast",
+    response_model=MonthlySpendingForecastResponse,
+    summary="월별 사용금액 예측 조회",
+)
+def get_monthly_spending_forecast(
+    month: str,
+    service: SpendingService = Depends(get_spending_service),
+):
+    """
+    최근 6개우러 총사용금액, 증감액, 증감률과
+    이번달 예상 사용금액을 조회
+    """
+    return service.get_monthly_spending_forecast(
+        user_id=1,
         month=month,
     )
