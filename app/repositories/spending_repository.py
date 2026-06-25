@@ -352,3 +352,25 @@ class SpendingRepository:
       .order_by(CardSpending.card_amount.desc())
       .all()
     )
+  
+  # --------------------------------------------------------------
+  #  카드별 사용금액 조회
+  # --------------------------------------------------------------
+  def get_monthly_summaries_by_user_and_month_range(
+    self,
+    user_id: int,
+    start_month: str, 
+    end_month: str,
+  ) -> list[MonthlySpendingSummary]:
+    """
+    특정 사용자의 월별 요약 데이터(6개월 치)를 월 범위로 조회
+    """
+    return (
+      self.db.query(MonthlySpendingSummary)
+      .filter(MonthlySpendingSummary.user_id == user_id)
+      .filter(MonthlySpendingSummary.month >= start_month)
+      .filter(MonthlySpendingSummary.month <= end_month)
+      .order_by(MonthlySpendingSummary.month.asc())
+      .all()
+    )
+    
