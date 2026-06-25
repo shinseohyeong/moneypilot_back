@@ -160,6 +160,42 @@ class MonthlyCardSpendingResponse(BaseModel):
   cards: list[CardSpendingItemResponse]
 
 
+# --------------------------------------------------------------
+#  전월 대비 사용금액, 6개월 평균 예상 사용금액 조회
+# --------------------------------------------------------------
+class MonthlySpendingForecastItem(BaseModel):
+  """ 전월 대비 사용금액  """
+  month: str
+  label: str
+  total_spending: int
+  spending_diff: int
+  spending_change_rate: float
   
+  @field_validator("total_spending", "spending_diff", mode="before")
+  @classmethod
+  def decimal_to_int(cls, value):
+    if value is None:
+      return 0
+
+    if isinstance(value, Decimal):
+      return int(value)
+
+    return int(value)
+  
+class MonthlySpendingForecastResponse(BaseModel):
+  month: str
+  expected_spending: int
+  monthly_items: list[MonthlySpendingForecastItem]
+  
+  @field_validator("expected_spending", mode="before")
+  @classmethod
+  def decimal_to_int(cls, value):
+    if value is None:
+      return 0
+
+    if isinstance(value, Decimal):
+      return int(value)
+
+    return int(value)
   
   
