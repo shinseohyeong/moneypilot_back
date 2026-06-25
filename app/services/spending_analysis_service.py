@@ -7,8 +7,14 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.models.spending_analysis_model import CategorySpending, CardSpending
-from app.repositories.spending_repository import SpendingAnalysisRepository, SpendingRepository
-
+from app.repositories.spending_repository import (
+  SpendingAnalysisRepository, SpendingRepository,
+)
+from app.repositories.spending_repository import SpendingRepository
+from app.schemas.spending_analysis import (
+  MonthlySpendingForecastItem,
+  MonthlySpendingForecastResponse,
+)
 
 class SpendingAnalysisService:
   def __init__(self, db:Session):
@@ -596,7 +602,10 @@ class SpendingService:
     user_id: int,
     month: str,
   ) -> dict:
-    """ 저장된 월별 카드별 사용금액 조회 """
+    """ 
+    저장된 월별 카드별 사용금액 조회 
+    """
+    
     summary = self.repository.get_monthly_summary_by_user_and_month(
       user_id=user_id,
       month=month,
@@ -632,3 +641,137 @@ class SpendingService:
         for item in card_spendings
       ],
     }
+    
+  # --------------------------------------------------------------
+  #  월별 사용금액 예측 조회
+  # --------------------------------------------------------------
+  def get_monthly_spending_forecast(
+    self,
+    user_id: int,
+    month: str,
+  ) -> dict:
+    """ 
+    최근 6개월 사용금액과 이번달 예상 사용금액 조회 
+    처리흐름:
+    1. 요청 월 형식 검증
+    2. 요청 월 기준 최근 6개월 범위 계산
+    3. 최근 6개월 월별 요약 데이터 조회
+    4. 데이터가 없는 월은 0으로 처리
+    5. 월별 총사용금액, 증감액, 증감률 계산
+    6. 최근 6개월 평균으로 이번달 예상 사용금액 계산 (사용금액 없는 달은 평균에서 제외)
+    """
+    self.validate_month_format(month)
+    
+    start_month = self.get_month_offset(month=month, offset=-5)
+    end_month = month
+    
+    summaries = self.repository.get_monthly_summaries_by_user_and_month_range(
+      user_id=user_id,
+      start_month=start_month,
+      end_month=end_month,
+    )
+    
+    summary_map = {
+      summary.month: summary
+      for summary in summaries
+    }
+    
+    months = self.get_month_range(
+      start_month=start_month,
+      end_month=end_month,
+    )
+    
+    monthly_items = []
+    
+    total_spending_sum = 0
+    existing_month_count = 0
+    
+    for target_month in months:
+      summary = summary_map.get(target_month)
+      
+      if summary:
+        total_spending = int(summary.total_spending)
+        spending_diff = int(summary.spending_diff)
+        spending_change_rate = float(summary.spending_change_rate)
+        
+        # 예상 사용금액 평균 계산은 실제 데이터가 있는 월만 포함
+        total_spending_sum += total_spending
+        existing_month_count += 1
+        
+      else:
+        # 데이터 없는 월은 프론트에 0으로 계산 
+        total_spending = 0
+        spending_diff = 0
+        spending_change_rate = 0.0
+      
+      monthly_items.append(
+        MonthlySpendingForecastItem(
+          month=target_month,
+          label=self.make_month_label(target_month),
+          total_spending=total_spending,
+          spending_diff=spending_diff,
+          spending_change_rate=spending_change_rate,
+        )
+      )
+    
+    expected_spending = 0
+    
+    if existing_month_count > 0:
+      expected_spending = int(total_spending_sum / existing_month_count)
+    
+    return MonthlySpendingForecastResponse(
+      month=month,
+      expected_spending=expected_spending,
+      monthly_items=monthly_items,
+    )
+  
+  
+  def get_month_offset(
+    self, 
+    month: str, 
+    offset: int,
+  ) -> str:
+    """ 기준 월에서 offset만큼 이동한 월 반환 """
+    
+    year, month_number = map(int, month.split("-"))
+    
+    total_month = year * 12 + month_number - 1 + offset
+    
+    new_year = total_month // 12
+    new_month = total_month % 12 + 1
+    
+    return f"{new_year:04d}-{new_month:02d}"
+
+  
+  def get_month_range(
+    self, 
+    start_month: str,
+    end_month: str,
+  ) -> list[str]:
+    """ 시작 월부터 종료 월까지 YYYY-MM 목록 생성 """
+    
+    months = []
+    current_month = start_month
+    
+    while current_month <= end_month:
+      months.append(current_month)
+      current_month = self.get_month_offset(
+        month=current_month,
+        offset=1,
+      )
+    
+    return months
+  
+  
+  def make_month_label(
+    self, 
+    month: str,
+  ) -> str:
+    """ YYY-MM 형식을 MM월 라벨로 변환 """
+    
+    month_number = int(month.split("-")[1])
+    
+    return f"{month_number}월"
+  
+  
+  
