@@ -21,6 +21,11 @@ from app.schemas.news_summary_schema import (
     NewsSummaryResponse,
 )
 from app.services.news_summary_service import NewsSummaryService
+from app.schemas.news_sector_schema import (
+    NewsSectorClassifyResponse,
+    NewsSectorListResponse,
+)
+from app.services.news_sector_service import NewsSectorService
 
 router = APIRouter(prefix="/api/v1", tags=["News"])
 
@@ -38,6 +43,12 @@ def get_news_summary_service(db: Session = Depends(get_db)) -> NewsSummaryServic
     뉴스 요약 service 객체를 생성합니다.
     """
     return NewsSummaryService(db)
+
+def get_news_sector_service(db: Session = Depends(get_db)) -> NewsSectorService:
+    """
+    뉴스 섹터 분류 service 객체를 생성합니다.
+    """
+    return NewsSectorService(db)
 
 @router.post(
     "/news/economy/collect",
@@ -147,3 +158,32 @@ def get_news_summary(
     저장된 뉴스 요약을 조회합니다.
     """
     return service.get_news_summary(news_id=news_id)
+
+@router.post(
+    "/news/{news_id}/sectors/classify",
+    response_model=NewsSectorClassifyResponse,
+    summary="뉴스 산업/테마 분류",
+)
+def classify_news_sectors(
+    news_id: int,
+    service: NewsSectorService = Depends(get_news_sector_service),
+):
+    """
+    특정 뉴스의 제목, 설명, 요약 내용을 기반으로 산업/테마를 분류합니다.
+    """
+    return service.classify_news_sectors(news_id=news_id)
+
+
+@router.get(
+    "/news/{news_id}/sectors",
+    response_model=NewsSectorListResponse,
+    summary="뉴스 산업/테마 분류 결과 조회",
+)
+def get_news_sectors(
+    news_id: int,
+    service: NewsSectorService = Depends(get_news_sector_service),
+):
+    """
+    특정 뉴스에 매핑된 산업/테마 분류 결과를 조회합니다.
+    """
+    return service.get_news_sectors(news_id=news_id)
