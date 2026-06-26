@@ -33,6 +33,12 @@ from app.schemas.sector_insight_schema import (
 )
 from app.services.sector_insight_service import SectorInsightService
 
+from app.schemas.news_sentiment_schema import (
+    NewsSentimentAnalyzeRequest,
+    NewsSentimentResponse,
+)
+from app.services.news_sentiment_service import NewsSentimentService
+
 
 
 router = APIRouter(prefix="/api/v1", tags=["News"])
@@ -63,6 +69,12 @@ def get_sector_insight_service(db: Session = Depends(get_db)) -> SectorInsightSe
     섹터 인사이트 service 객체를 생성합니다.
     """
     return SectorInsightService(db)
+
+def get_news_sentiment_service(db: Session = Depends(get_db)) -> NewsSentimentService:
+    """
+    뉴스 감정분석 service 객체를 생성합니다.
+    """
+    return NewsSentimentService(db)
 
 @router.post(
     "/news/economy/collect",
@@ -230,3 +242,36 @@ def get_sector_insights(
     저장된 섹터 인사이트를 조회합니다.
     """
     return service.get_sector_insights(period_days=period_days)
+
+@router.get(
+    "/news/{news_id}/sentiment",
+    response_model=NewsSentimentResponse,
+    summary="뉴스 감정분석 결과 조회",
+)
+def get_news_sentiment(
+    news_id: int,
+    service: NewsSentimentService = Depends(get_news_sentiment_service),
+):
+    """
+    저장된 뉴스 요약 결과의 sentiment 값을 조회합니다.
+    """
+    return service.get_news_sentiment(news_id=news_id)
+
+
+@router.post(
+    "/news/{news_id}/sentiment/analyze",
+    response_model=NewsSentimentResponse,
+    summary="뉴스 감정분석 실행",
+)
+def analyze_news_sentiment(
+    news_id: int,
+    request: NewsSentimentAnalyzeRequest,
+    service: NewsSentimentService = Depends(get_news_sentiment_service),
+):
+    """
+    뉴스 요약 생성 로직을 재사용해 감정분석을 실행합니다.
+    """
+    return service.analyze_news_sentiment(
+        news_id=news_id,
+        force_refresh=request.force_refresh,
+    )
