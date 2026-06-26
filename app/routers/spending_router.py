@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -10,11 +10,13 @@ from app.schemas.spending_analysis import (
     ExpenseTypesResponse,
     MonthlyCardSpendingResponse,
     MonthlySpendingForecastResponse,
+    AnalysisReportResponse,
 )
 from app.services.spending_analysis_service import (
     SpendingAnalysisService,
     SpendingService,
 )
+from app.services.spending_report_service import AnalysisReportService
 
 router = APIRouter()
 
@@ -26,6 +28,11 @@ def get_spending_analysis_service(
 
 def get_spending_service(db: Session = Depends(get_db)) -> SpendingService:
     return SpendingService(db)
+
+def get_analysis_report_service(
+    db: Session = Depends(get_db),
+) -> AnalysisReportService:
+    return AnalysisReportService(db)
 
 
 @router.post(
@@ -241,5 +248,67 @@ def get_monthly_spending_forecast(
     """
     return service.get_monthly_spending_forecast(
         user_id=1,
+        month=month,
+    )
+
+# --------------------------------------------------------------
+#  월별 소비패턴 리포트
+# --------------------------------------------------------------
+@router.post(
+    "/monthly/{month}/report",
+    response_model=AnalysisReportResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="AI 소비 분석 리포트 생성",
+)
+def create_monthly_analysis_report(
+    month: str, 
+    service: AnalysisReportService = Depends(get_analysis_report_service),
+    # current_user: User = Depends(get_current_user),
+):
+    """
+    AI 소비 분석 리포트를 생성
+    처리 흐름: 
+    1. 월별 소비 요약 데이터를 조회
+    2. 이번 달 지출 금액이 큰 카테고리 TOP 3 조회
+    3. 전월 대비 증가액이 큰 카테고리 TOP 3 조회
+    4. 카드별 사용금액 중 가장 높은 카드 정보 조회 
+    5. LLM 전달할 소비 분석 context 생성
+    6. LLM 호출해 소비 패턴 해석, 과소비 원인, 다음 달 실천 전략 생성
+    7. analysis_reports 테이블에 저장하거나 기존 리포트 갱신
+    """
+    # JWT 적용 전 임시 user_id
+    user_id = 1
+
+    # JWT 적용 후 사용
+    # user_id = current_user.id
+
+    return service.generate_monthly_report(
+        user_id=user_id,
+        month=month,
+    )
+
+
+@router.get(
+    "/monthly/{month}/report",
+    response_model=AnalysisReportResponse,
+    summary="AI 소비 분석 리포트 조회",
+)
+def get_monthly_analysis_report(
+    month: str,
+    service: AnalysisReportService = Depends(get_analysis_report_service),
+    # current_user: User = Depends(get_current_user),
+):
+    """
+    저장된 AI 소비 분석 리포트 조회
+    GET - LLM 호출하지 않고 DB에 저장된 리포트 조회 
+    """
+    # JWT 적용 전 임시 user_id
+    user_id = 1
+
+    # JWT 적용 후 사용
+    # user_id = current_user.id
+
+    return service.get_monthly_report(
+        user_id=user_id,
         month=month,
     )
