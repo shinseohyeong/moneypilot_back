@@ -198,4 +198,38 @@ class MonthlySpendingForecastResponse(BaseModel):
 
     return int(value)
   
+# --------------------------------------------------------------
+#  월별 소비 리포트
+# --------------------------------------------------------------
+class AnalysisReportResponse(BaseModel):
+  """ AI 소비 분석 리포트 조회 / 생성 응답 스키마 """
+  id: int
+  summary_id: int
+  user_id: int
+  month: str
   
+  report_title: str
+  summary_text: str
+  category_text: str | None = None
+  overspending_text: str | None = None
+  card_text: str | None = None
+  compare_text: str | None = None
+  recommendation_text: str | None = None
+  agent_response: str | None = None
+  
+  created_at: datetime
+  
+  class Config:
+    from_attributes = True
+
+
+class LLMReportResult(BaseModel):
+  """ LLM 응답 검증용 스키마 """
+  report_title: str
+  summary_text: str
+  category_text: str | None = None
+  overspending_text: str | None = None
+  card_text: str | None = None
+  compare_text: str | None = None
+  recommendation_text: str | None = None
+  agent_response: str | None = None
