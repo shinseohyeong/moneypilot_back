@@ -27,6 +27,14 @@ from app.schemas.news_sector_schema import (
 )
 from app.services.news_sector_service import NewsSectorService
 
+from app.schemas.sector_insight_schema import (
+    SectorInsightGenerateResponse,
+    SectorInsightListResponse,
+)
+from app.services.sector_insight_service import SectorInsightService
+
+
+
 router = APIRouter(prefix="/api/v1", tags=["News"])
 
 
@@ -49,6 +57,12 @@ def get_news_sector_service(db: Session = Depends(get_db)) -> NewsSectorService:
     뉴스 섹터 분류 service 객체를 생성합니다.
     """
     return NewsSectorService(db)
+
+def get_sector_insight_service(db: Session = Depends(get_db)) -> SectorInsightService:
+    """
+    섹터 인사이트 service 객체를 생성합니다.
+    """
+    return SectorInsightService(db)
 
 @router.post(
     "/news/economy/collect",
@@ -187,3 +201,32 @@ def get_news_sectors(
     특정 뉴스에 매핑된 산업/테마 분류 결과를 조회합니다.
     """
     return service.get_news_sectors(news_id=news_id)
+
+@router.post(
+    "/sectors/insights/generate",
+    response_model=SectorInsightGenerateResponse,
+    summary="섹터 인사이트 생성",
+)
+def generate_sector_insights(
+    period_days: int = 7,
+    service: SectorInsightService = Depends(get_sector_insight_service),
+):
+    """
+    최근 N일간 뉴스 섹터 분류 결과를 기반으로 섹터 인사이트를 생성합니다.
+    """
+    return service.generate_sector_insights(period_days=period_days)
+
+
+@router.get(
+    "/sectors/insights",
+    response_model=SectorInsightListResponse,
+    summary="섹터 인사이트 조회",
+)
+def get_sector_insights(
+    period_days: int = 7,
+    service: SectorInsightService = Depends(get_sector_insight_service),
+):
+    """
+    저장된 섹터 인사이트를 조회합니다.
+    """
+    return service.get_sector_insights(period_days=period_days)
