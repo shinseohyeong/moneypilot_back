@@ -13,6 +13,8 @@ class Settings:
     DB_USER: str = os.getenv("DB_USER", "root")
     DB_PASSWORD: str = os.getenv("DB_PASSWORD", "")
     DB_NAME: str = os.getenv("DB_NAME", "")
+    
+    OPENAI_API_KEY: str | None = os.getenv("OPENAI_API_KEY")
 
     @property
     def DATABASE_URL(self) -> str:
