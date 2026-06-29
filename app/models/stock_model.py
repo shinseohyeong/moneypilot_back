@@ -49,6 +49,12 @@ class StockPrice(Base):
     volume = Column(BigInteger, server_default=text("0"))
     trade_value = Column(DECIMAL(20, 2), server_default=text("0"))
 
+    # 공공데이터 상장주식
+    listed_shares = Column(BigInteger, server_default=text("0"))
+
+    # 공공데이터 시가총액
+    market_cap = Column(DECIMAL(25, 2), server_default=text("0"))
+
     source = Column(String(50), nullable=False, default="PUBLIC_DATA")
     fetched_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
@@ -68,6 +74,7 @@ class StockWatchlist(Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     user_id = Column(BigInteger, ForeignKey("users.id"), nullable=False)
+    category_id = Column(BigInteger, ForeignKey("stock_watchlist_categories.id"), nullable=False)
     stock_id = Column(BigInteger, ForeignKey("stocks.id"), nullable=False)
 
     memo = Column(String(255), nullable=True)
@@ -78,7 +85,33 @@ class StockWatchlist(Base):
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
     __table_args__ = (
-        UniqueConstraint("user_id", "stock_id", name="uk_watchlist_user_stock"),
+        UniqueConstraint(
+            "user_id",
+            "category_id",
+            "stock_id",
+            name="uk_watchlist_user_category_stock",
+        ),
+    )
+
+class StockWatchlistCategory(Base):
+    __tablename__ = "stock_watchlist_categories"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    user_id = Column(BigInteger, ForeignKey("users.id"), nullable=False)
+
+    category_name = Column(String(100), nullable=False)
+    display_order = Column(BigInteger, nullable=False, server_default=text("0"))
+    is_default = Column(Boolean, nullable=False, default=False)
+
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "category_name",
+            name="uk_watchlist_category_user_name",
+        ),
     )
 
 

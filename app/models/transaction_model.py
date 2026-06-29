@@ -1,60 +1,110 @@
+# ==========================================
+# 파일 위치 : app/models/transaction_model.py
+# 역할 : 거래내역 테이블 ORM 모델
+# 파일 업로드 + 수기 입력 거래 저장
+# ==========================================
+
 from sqlalchemy import (
-    BigInteger,
-    Boolean,
     Column,
-    Date,
-    DateTime,
-    DECIMAL,
-    ForeignKey,
+    BigInteger,
     String,
-    func,
+    Date,
+    Numeric,
+    Boolean,
+    ForeignKey,
+    TIMESTAMP
 )
+
+from sqlalchemy.sql import func
 
 from app.core.database import Base
 
 
 class Transaction(Base):
     __tablename__ = "transactions"
+    # 거래내역 ID
+    id = Column(
+        BigInteger,
+        primary_key=True,
+        autoincrement=True
+    )
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-
+    # 사용자 ID
     user_id = Column(
         BigInteger,
         ForeignKey("users.id"),
-        nullable=False,
+        nullable=False
     )
 
+    # 명세서 ID
+    # 파일 업로드 : 값 존재
+    # 수기 입력 : NULL
     statement_id = Column(
         BigInteger,
         ForeignKey("card_statements.id"),
-        nullable=True,
+        nullable=True
     )
 
-    transaction_date = Column(Date, nullable=False)
+    # 거래일
+    transaction_date = Column(
+        Date,
+        nullable=False
+    )
 
+    # 거래 월
     # 예: 2026-06
-    month = Column(String(7), nullable=False)
+    month = Column(
+        String(7),
+        nullable=False
+    )
 
-    merchant_name = Column(String(100), nullable=False)
-    description = Column(String(255), nullable=True)
+    # 가맹점명
+    merchant_name = Column(
+        String(100),
+        nullable=False
+    )
 
-    amount = Column(DECIMAL(15, 2), nullable=False)
+    # 결제 설명
+    # 예: 친구 카톡 정산
+    description = Column(
+        String(255),
+        nullable=True
+    )
 
-    category = Column(String(50), nullable=True)
+    # 결제 금액
+    amount = Column(
+        Numeric(15,2),
+        nullable=False
+    )
 
-    is_recurring = Column(Boolean, nullable=False, default=False)
+    # 소비 카테고리
+    category = Column(
+        String(50),
+        nullable=True
+    )
 
-    # FIXED | VARIABLE
+    # 반복 결제 여부
+    is_recurring = Column(
+        Boolean,
+        default=False
+    )
+
+    # 고정/변동 지출
+    # FIXED / VARIABLE
     expense_type = Column(
         String(20),
-        nullable=False,
-        default="VARIABLE",
+        default="VARIABLE"
     )
 
-    created_at = Column(DateTime, server_default=func.now())
+    # 생성 시간
+    created_at = Column(
+        TIMESTAMP,
+        server_default=func.now()
+    )
 
+    # 수정 시간
     updated_at = Column(
-        DateTime,
+        TIMESTAMP,
         server_default=func.now(),
-        onupdate=func.now(),
+        onupdate=func.now()
     )
