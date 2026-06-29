@@ -1,6 +1,5 @@
 """
 schemas/finance_profile.py — 금융 프로필 요청/응답 스키마
-
 팀 모델(app/models/user_model.py FinanceProfile) 기준:
   - age_group, income_level, investment_type, financial_goal  (전부 문자열 분류값)
   - 월급/연봉/위험성향 숫자 컬럼은 팀 모델에 없음
@@ -16,25 +15,31 @@ from pydantic import BaseModel, Field
 
 
 class FinanceProfileCreate(BaseModel):
-    age_group: Optional[str] = Field(None, max_length=20, description="연령대 구간 (예: '20대')")
-    income_level: Optional[str] = Field(None, max_length=50, description="소득 구간 (예: '3000~4000만원')")
-    investment_type: Optional[str] = Field(None, max_length=50, description="투자 성향 (예: '안정형')")
-    financial_goal: Optional[str] = Field(None, max_length=255, description="투자 목표")
+    monthly_salary: float = Field(..., ge=0, description="월급 (원)")
+    annual_salary: Optional[float] = Field(None, ge=0, description="연봉 (미입력 시 월급×12 자동 계산)")
+    fixed_expense: Optional[float] = Field(0, ge=0, description="월 고정비 (원)")
+    risk_type: str = Field(..., max_length=30, description="투자 성향")
+    investment_goal: Optional[str] = Field(None, max_length=100, description="투자 목표")
+    target_saving_amount: Optional[float] = Field(0, ge=0, description="목표 저축액 (원)")
 
 
 class FinanceProfileUpdate(BaseModel):
-    age_group: Optional[str] = Field(None, max_length=20)
-    income_level: Optional[str] = Field(None, max_length=50)
-    investment_type: Optional[str] = Field(None, max_length=50)
-    financial_goal: Optional[str] = Field(None, max_length=255)
+    monthly_salary: Optional[float] = Field(None, ge=0)
+    annual_salary: Optional[float] = Field(None, ge=0)
+    fixed_expense: Optional[float] = Field(None, ge=0)
+    risk_type: Optional[str] = Field(None, max_length=30)
+    investment_goal: Optional[str] = Field(None, max_length=100)
+    target_saving_amount: Optional[float] = Field(None, ge=0)
 
 
 class FinanceProfileResponse(BaseModel):
     user_id: int
-    age_group: Optional[str]
-    income_level: Optional[str]
-    investment_type: Optional[str]
-    financial_goal: Optional[str]
+    monthly_salary: float
+    annual_salary: float
+    fixed_expense: Optional[float]
+    risk_type: str
+    investment_goal: Optional[str]
+    target_saving_amount: Optional[float]
     updated_at: datetime
 
     model_config = {"from_attributes": True}

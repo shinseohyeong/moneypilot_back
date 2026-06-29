@@ -17,6 +17,7 @@ class UserResponse(BaseModel):
     phone: Optional[str]
     login_type: str
     role: str
+    login_type: str
     is_active: bool
     created_at: datetime
 

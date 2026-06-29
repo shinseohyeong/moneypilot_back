@@ -1,6 +1,5 @@
 """
 services/finance_service.py — 금융 프로필 도메인 비즈니스 로직
-
 팀 모델 기준:
   - FinanceProfile: age_group, income_level, investment_type, financial_goal (전부 문자열)
   - 월급/연봉 숫자 컬럼이 없으므로 '연봉 자동계산' 같은 수치 로직은 없음.
@@ -15,6 +14,8 @@ from app.models.user_model import FinanceProfile
 from app.schemas.finance_profile import FinanceProfileCreate, FinanceProfileUpdate
 
 logger = logging.getLogger(__name__)
+
+MONTHS_PER_YEAR = 12
 
 
 def _get_profile_or_404(db: Session, user_id: int) -> FinanceProfile:
@@ -31,12 +32,11 @@ def _get_profile_or_404(db: Session, user_id: int) -> FinanceProfile:
 
 
 def create_profile(db: Session, user_id: int, body: FinanceProfileCreate) -> FinanceProfile:
-    """
-    mp_finance_001 — 금융 프로필 최초 등록.
 
     Raises:
         HTTPException(409): 이미 프로필이 존재할 때.
-    """
+  
+    
     existing = db.query(FinanceProfile).filter(
         FinanceProfile.user_id == user_id
     ).first()
@@ -46,16 +46,22 @@ def create_profile(db: Session, user_id: int, body: FinanceProfileCreate) -> Fin
             detail="이미 금융 프로필이 존재합니다. 수정은 PATCH /api/finance/profile 를 사용하세요.",
         )
 
+    annual_salary = body.annual_salary or body.monthly_salary * MONTHS_PER_YEAR
+
     profile = FinanceProfile(
         user_id=user_id,
-        age_group=body.age_group,
-        income_level=body.income_level,
-        investment_type=body.investment_type,
-        financial_goal=body.financial_goal,
+        monthly_salary=body.monthly_salary,
+        annual_salary=annual_salary,
+        fixed_expense=body.fixed_expense or 0,
+        risk_type=body.risk_type,
+        investment_goal=body.investment_goal,
+        target_saving_amount=body.target_saving_amount or 0,
     )
     db.add(profile)
     db.commit()
     db.refresh(profile)
+    logger.info(f"금융 프로필 등록 완료 — user_id={user_id}")
+
 
     logger.info(f"금융 프로필 등록 완료 — user_id={user_id}, investment_type={body.investment_type}")
     return profile
@@ -71,6 +77,8 @@ def update_profile(db: Session, user_id: int, body: FinanceProfileUpdate) -> Fin
     profile = _get_profile_or_404(db, user_id)
 
     update_data = body.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(profile, key, value)
     for field, value in update_data.items():
         setattr(profile, field, value)
 
