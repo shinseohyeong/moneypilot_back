@@ -2,6 +2,7 @@
 import os
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
+from pathlib import Path
 
 # backend 폴더 기준 .env를 명확히 읽기 위한 설정
 # config.py 위치: backend/app/core/config.py

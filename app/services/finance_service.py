@@ -32,10 +32,10 @@ def _get_profile_or_404(db: Session, user_id: int) -> FinanceProfile:
 
 
 def create_profile(db: Session, user_id: int, body: FinanceProfileCreate) -> FinanceProfile:
-
+    '''
     Raises:
-        HTTPException(409): 이미 프로필이 존재할 때.
-  
+        HTTPException(409): # 이미 프로필이 존재할 때.
+    '''
     
     existing = db.query(FinanceProfile).filter(
         FinanceProfile.user_id == user_id
