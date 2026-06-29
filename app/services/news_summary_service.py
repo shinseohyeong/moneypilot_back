@@ -16,13 +16,9 @@ from app.clients.llm_client import get_llm_client
 from app.models.news_model import NewsSummary
 from app.repositories.news_summary_repository import NewsSummaryRepository
 from app.schemas.news_summary_schema import NewsSummaryResponse
-
+from app.core.disclaimer import get_investment_disclaimer
 
 class NewsSummaryService:
-    DISCLAIMER = (
-        "본 내용은 투자 권유가 아니며, 뉴스 기반 참고 정보입니다. "
-        "투자 판단과 책임은 사용자 본인에게 있습니다."
-    )
 
     def __init__(self, db: Session):
         self.db = db
@@ -154,7 +150,7 @@ class NewsSummaryService:
             investment_note=summary.investment_note,
             sentiment=summary.sentiment,
             model_name=summary.model_name,
-            disclaimer=self.DISCLAIMER,
+            disclaimer=get_investment_disclaimer(),
             created_at=getattr(summary, "created_at", None),
             updated_at=getattr(summary, "updated_at", None),
         )
