@@ -1,6 +1,13 @@
 """
 routers/finance_router.py — 금융 프로필 API
-prefix(/api/finance)와 tags는 main.py에서 부여하므로 여기선 경로만 정의
+
+prefix(/api/finance)와 tags는 main.py의 include_router에서 부여하므로
+이 파일에서는 경로만 정의한다.
+
+엔드포인트:
+  POST  /profile   금융 프로필 등록
+  GET   /profile   금융 프로필 조회
+  PATCH /profile   금융 프로필 수정
 """
 
 from fastapi import APIRouter, Depends, status

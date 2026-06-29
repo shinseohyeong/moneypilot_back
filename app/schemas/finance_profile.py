@@ -1,17 +1,11 @@
 """
 schemas/finance_profile.py — 금융 프로필 요청/응답 스키마
-<<<<<<< Updated upstream
-팀 모델 기준: age_group, income_level, investment_type, financial_goal (전부 문자열)
-=======
+팀 모델(app/models/user_model.py FinanceProfile) 기준:
+  - age_group, income_level, investment_type, financial_goal  (전부 문자열 분류값)
+  - 월급/연봉/위험성향 숫자 컬럼은 팀 모델에 없음
 
-실제 팀 모델(user_model.py FinanceProfile) 기준:
-  monthly_salary        DECIMAL, NOT NULL  (필수)
-  annual_salary         DECIMAL, NOT NULL  (필수)
-  fixed_expense         DECIMAL, nullable, 기본 0
-  risk_type             String(30), NOT NULL  (필수)
-  investment_goal       String(100), nullable
-  target_saving_amount  DECIMAL, nullable, 기본 0
->>>>>>> Stashed changes
+분류값 예시는 Literal로 강제하지 않고 자유 문자열로 둔다.
+(팀에서 구간 정의가 확정되면 Literal로 좁히면 됨)
 """
 
 from datetime import datetime
