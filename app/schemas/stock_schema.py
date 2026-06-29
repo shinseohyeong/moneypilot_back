@@ -3,8 +3,10 @@
 
 from typing import List, Optional
 from pydantic import BaseModel, Field
-from datetime import datetime
+from datetime import date
+from decimal import Decimal
 
+from pydantic import BaseModel
 
 class StockSearchItem(BaseModel):
     """
@@ -33,3 +35,46 @@ class StockSearchResponse(BaseModel):
     keyword: str = Field(..., description="검색어")
     count: int = Field(..., description="검색 결과 개수")
     items: List[StockSearchItem] = Field(default_factory=list, description="검색 결과 목록")
+
+# ==============
+# 종목 상세 조회
+# ==============
+class StockDetailLatestPrice(BaseModel):
+    """
+    종목 상세 화면에서 함께 보여줄 최근 기준 시세 정보입니다.
+    실시간 현재가가 아니라 DB에 저장된 최신 거래일 기준 시세입니다.
+    """
+
+    price_label: str = "최근 거래일 종가"
+    price_date: date
+
+    close_price: Decimal
+    previous_close: Optional[Decimal] = None
+    price_change: Optional[Decimal] = None
+    change_rate: Optional[Decimal] = None
+
+    open_price: Optional[Decimal] = None
+    high_price: Optional[Decimal] = None
+    low_price: Optional[Decimal] = None
+
+    volume: Optional[int] = None
+    trade_value: Optional[Decimal] = None
+    listed_shares: Optional[int] = None
+    market_cap: Optional[Decimal] = None
+
+
+class StockDetailResponse(BaseModel):
+    """
+    종목 상세 조회 응답입니다.
+    """
+
+    stock_id: int
+    stock_code: str
+    stock_name: str
+    market: str
+
+    representative_sector: Optional[str] = None
+    industry: Optional[str] = None
+    is_active: bool
+
+    latest_price: Optional[StockDetailLatestPrice] = None
