@@ -36,11 +36,35 @@ from app.schemas.stock_watchlist_schema import (
     StockWatchlistUpdate,
 )
 
+from app.schemas.stock_report_schema import (
+    StockReportListResponse,
+    StockReportResponse,
+)
+from app.services.stock_report_service import StockReportService
+
+from app.schemas.stock_alert_schema import (
+    StockAlertGenerateResponse,
+    StockAlertListResponse,
+    StockAlertReadResponse,
+)
+from app.services.stock_alert_service import StockAlertService
 
 router = APIRouter(
     prefix="/api/v1/stocks",
     tags=["Stocks"],
 )
+
+def get_stock_report_service(db: Session = Depends(get_db)) -> StockReportService:
+    """
+    관심종목 요약 리포트 service 객체를 생성합니다.
+    """
+    return StockReportService(db)
+
+def get_stock_alert_service(db: Session = Depends(get_db)) -> StockAlertService:
+    """
+    관심종목 뉴스 알림 service 객체를 생성합니다.
+    """
+    return StockAlertService(db)
 
 # ====================
 # 주식 조회
@@ -226,6 +250,107 @@ def delete_watchlist(
         watchlist_id=watchlist_id,
     )
 
+@router.post(
+    "/reports/generate",
+    response_model=StockReportResponse,
+    summary="관심종목 요약 리포트 생성",
+)
+def generate_stock_report(
+    user_id: int,
+    service: StockReportService = Depends(get_stock_report_service),
+):
+    """
+    사용자의 관심종목을 기준으로 현재가, 뉴스 요약, 섹터 흐름, 위험 요인을 종합한 리포트를 생성합니다.
+    """
+    return service.generate_stock_report(user_id=user_id)
+
+
+@router.get(
+    "/reports",
+    response_model=StockReportListResponse,
+    summary="관심종목 요약 리포트 목록 조회",
+)
+def list_stock_reports(
+    user_id: int,
+    limit: int = 20,
+    service: StockReportService = Depends(get_stock_report_service),
+):
+    """
+    사용자의 관심종목 요약 리포트 목록을 조회합니다.
+    """
+    return service.list_stock_reports(
+        user_id=user_id,
+        limit=limit,
+    )
+
+
+@router.get(
+    "/reports/{report_id}",
+    response_model=StockReportResponse,
+    summary="관심종목 요약 리포트 상세 조회",
+)
+def get_stock_report(
+    report_id: int,
+    service: StockReportService = Depends(get_stock_report_service),
+):
+    """
+    저장된 관심종목 요약 리포트 상세를 조회합니다.
+    """
+    return service.get_stock_report(report_id=report_id)
+
+@router.post(
+    "/alerts/generate",
+    response_model=StockAlertGenerateResponse,
+    summary="관심종목 뉴스 알림 생성",
+)
+def generate_stock_alerts(
+    user_id: int,
+    days: int = 7,
+    service: StockAlertService = Depends(get_stock_alert_service),
+):
+    """
+    사용자의 관심종목 관련 최근 뉴스를 기반으로 대시보드 알림을 생성합니다.
+    """
+    return service.generate_stock_alerts(
+        user_id=user_id,
+        days=days,
+    )
+
+
+@router.get(
+    "/alerts",
+    response_model=StockAlertListResponse,
+    summary="관심종목 뉴스 알림 목록 조회",
+)
+def list_stock_alerts(
+    user_id: int,
+    unread_only: bool = False,
+    limit: int = 50,
+    service: StockAlertService = Depends(get_stock_alert_service),
+):
+    """
+    사용자의 관심종목 뉴스 알림 목록을 조회합니다.
+    """
+    return service.list_stock_alerts(
+        user_id=user_id,
+        unread_only=unread_only,
+        limit=limit,
+    )
+
+
+@router.patch(
+    "/alerts/{alert_id}/read",
+    response_model=StockAlertReadResponse,
+    summary="관심종목 뉴스 알림 읽음 처리",
+)
+def mark_stock_alert_as_read(
+    alert_id: int,
+    service: StockAlertService = Depends(get_stock_alert_service),
+):
+    """
+    알림 1건을 읽음 처리합니다.
+    """
+    return service.mark_alert_as_read(alert_id=alert_id)
 
 
 # ====================
