@@ -227,3 +227,68 @@ class StockReportItem(Base):
         DateTime,
         server_default=func.now(),
     )
+
+class NewsCollectionSetting(Base):
+    __tablename__ = "news_collection_settings"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+
+    # 수집 키워드 예: 경제, 코스피, 반도체, 삼성전자
+    keyword = Column(String(100), nullable=False)
+
+    # 키워드 구분 예: ECONOMY, STOCK, SECTOR, THEME
+    category = Column(String(50), nullable=True)
+
+    # 뉴스 제공자 예: NAVER
+    provider = Column(String(50), nullable=False, server_default=text("'NAVER'"))
+
+    # 수집 주기. MVP에서는 설정값만 저장하고 수동 실행 API부터 구현합니다.
+    interval_minutes = Column(Integer, nullable=False, server_default=text("60"))
+
+    # 한 번 수집할 뉴스 개수
+    display_count = Column(Integer, nullable=False, server_default=text("10"))
+
+    # 정렬 방식. 네이버 기준 sim 또는 date
+    sort = Column(String(20), nullable=False, server_default=text("'date'"))
+
+    # 활성화 여부
+    is_active = Column(Boolean, nullable=False, server_default=text("1"))
+
+    # 마지막 수집 시간
+    last_collected_at = Column(DateTime, nullable=True)
+
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("keyword", "provider", name="uk_news_collection_keyword_provider"),
+    )
+
+
+class NewsCollectionLog(Base):
+    __tablename__ = "news_collection_logs"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+
+    setting_id = Column(
+        BigInteger,
+        ForeignKey("news_collection_settings.id"),
+        nullable=True,
+    )
+
+    keyword = Column(String(100), nullable=False)
+    provider = Column(String(50), nullable=False)
+
+    # SUCCESS / FAILED
+    status = Column(String(20), nullable=False)
+
+    requested_count = Column(Integer, nullable=False, server_default=text("0"))
+    saved_count = Column(Integer, nullable=False, server_default=text("0"))
+    duplicated_count = Column(Integer, nullable=False, server_default=text("0"))
+
+    error_message = Column(Text, nullable=True)
+
+    started_at = Column(DateTime, nullable=False)
+    finished_at = Column(DateTime, nullable=True)
+
+    created_at = Column(DateTime, server_default=func.now())
