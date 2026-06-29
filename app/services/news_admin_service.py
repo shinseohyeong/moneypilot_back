@@ -1,10 +1,16 @@
-from typing import Any
+from typing import Any, Optional
 
 from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+import hashlib
+import re
+from datetime import datetime
+from email.utils import parsedate_to_datetime
+from html import unescape
 
-from app.models.news_model import NewsCollectionSetting
+from app.clients.naver_news_client import get_naver_news_client
+from app.models.news_model import NewsCollectionSetting, NewsArticle, NewsCollectionLog
 from app.repositories.news_admin_repository import NewsAdminRepository
 from app.schemas.news_admin_schema import (
     NewsCollectionLogListResponse,
@@ -13,6 +19,8 @@ from app.schemas.news_admin_schema import (
     NewsCollectionSettingListResponse,
     NewsCollectionSettingResponse,
     NewsCollectionSettingUpdate,
+    NewsCollectKeywordResult,
+    NewsCollectRunResponse,
 )
 
 
@@ -24,6 +32,7 @@ class NewsAdminService:
     def __init__(self, db: Session):
         self.db = db
         self.repository = NewsAdminRepository(db)
+        self.naver_news_client = get_naver_news_client()
 
     def create_setting(
         self,
@@ -209,3 +218,213 @@ class NewsAdminService:
             finished_at=log.finished_at,
             created_at=log.created_at,
         )
+    
+    def run_news_collection(
+        self,
+        setting_id: Optional[int] = None,
+    ) -> NewsCollectRunResponse:
+        """
+        뉴스 수집 설정을 기준으로 수동 뉴스 수집을 실행합니다.
+
+        setting_id가 있으면 해당 설정 1개만 수집합니다.
+        setting_id가 없으면 활성화된 전체 설정을 수집합니다.
+        """
+        if setting_id:
+            setting = self.repository.get_setting_by_id(setting_id=setting_id)
+
+            if not setting:
+                raise HTTPException(
+                    status_code=404,
+                    detail="해당 뉴스 수집 설정을 찾을 수 없습니다.",
+                )
+
+            settings = [setting]
+
+        else:
+            settings = self.repository.list_active_settings()
+
+        if not settings:
+            raise HTTPException(
+                status_code=404,
+                detail="활성화된 뉴스 수집 설정이 없습니다.",
+            )
+
+        results = []
+
+        for setting in settings:
+            result = self._collect_news_by_setting(setting)
+            results.append(result)
+
+        return NewsCollectRunResponse(
+            total_settings=len(results),
+            success_count=len([item for item in results if item.status == "SUCCESS"]),
+            failed_count=len([item for item in results if item.status == "FAILED"]),
+            total_requested_count=sum(item.requested_count for item in results),
+            total_saved_count=sum(item.saved_count for item in results),
+            total_duplicated_count=sum(item.duplicated_count for item in results),
+            items=results,
+        )
+
+    def _collect_news_by_setting(
+        self,
+        setting: Any,
+    ) -> NewsCollectKeywordResult:
+        """
+        설정 1개 기준으로 네이버 뉴스를 수집하고 DB에 저장합니다.
+        """
+        started_at = datetime.now()
+        requested_count = 0
+        saved_count = 0
+        duplicated_count = 0
+        error_message = None
+        status = "SUCCESS"
+
+        try:
+            api_result = self.naver_news_client.search_news(
+                keyword=setting.keyword,
+                display=setting.display_count,
+                start=1,
+                sort=setting.sort,
+            )
+
+            items = api_result.get("items", [])
+            requested_count = len(items)
+
+            for item in items:
+                original_link = item.get("originallink")
+                api_link = item.get("link")
+                url = original_link or api_link
+
+                if not url:
+                    continue
+
+                url_hash = self._make_url_hash(url)
+
+                existing_article = self.repository.get_article_by_url_hash(
+                    url_hash=url_hash,
+                )
+
+                if existing_article:
+                    duplicated_count += 1
+                    continue
+
+                article = NewsArticle(
+                    title=self._clean_text(item.get("title")),
+                    description=self._clean_text(item.get("description")),
+                    content=None,
+                    original_link=original_link,
+                    api_link=api_link,
+                    url_hash=url_hash,
+                    source_name="NAVER",
+                    provider=setting.provider,
+                    search_keyword=setting.keyword,
+                    published_at=self._parse_pub_date(item.get("pubDate")),
+                    collected_at=datetime.now(),
+                    is_active=True,
+                )
+
+                self.repository.create_article(article)
+                saved_count += 1
+
+            finished_at = datetime.now()
+
+            log = NewsCollectionLog(
+                setting_id=setting.id,
+                keyword=setting.keyword,
+                provider=setting.provider,
+                status=status,
+                requested_count=requested_count,
+                saved_count=saved_count,
+                duplicated_count=duplicated_count,
+                error_message=None,
+                started_at=started_at,
+                finished_at=finished_at,
+            )
+
+            self.repository.create_log(log)
+            self.repository.update_setting_last_collected_at(
+                setting=setting,
+                collected_at=finished_at,
+            )
+
+            self.db.commit()
+
+            return NewsCollectKeywordResult(
+                setting_id=setting.id,
+                keyword=setting.keyword,
+                provider=setting.provider,
+                requested_count=requested_count,
+                saved_count=saved_count,
+                duplicated_count=duplicated_count,
+                status=status,
+                error_message=None,
+            )
+
+        except Exception as e:
+            self.db.rollback()
+
+            status = "FAILED"
+            error_message = str(e)
+            finished_at = datetime.now()
+
+            try:
+                log = NewsCollectionLog(
+                    setting_id=setting.id,
+                    keyword=setting.keyword,
+                    provider=setting.provider,
+                    status=status,
+                    requested_count=requested_count,
+                    saved_count=saved_count,
+                    duplicated_count=duplicated_count,
+                    error_message=error_message,
+                    started_at=started_at,
+                    finished_at=finished_at,
+                )
+
+                self.repository.create_log(log)
+                self.db.commit()
+
+            except Exception:
+                self.db.rollback()
+
+            return NewsCollectKeywordResult(
+                setting_id=setting.id,
+                keyword=setting.keyword,
+                provider=setting.provider,
+                requested_count=requested_count,
+                saved_count=saved_count,
+                duplicated_count=duplicated_count,
+                status=status,
+                error_message=error_message,
+            )
+
+    def _make_url_hash(self, url: str) -> str:
+        """
+        URL 중복 저장 방지를 위한 해시를 생성합니다.
+        """
+        return hashlib.sha256(url.encode("utf-8")).hexdigest()
+
+    def _clean_text(self, value: Optional[str]) -> Optional[str]:
+        """
+        네이버 뉴스 API 응답의 HTML 태그와 엔티티를 정리합니다.
+        """
+        if value is None:
+            return None
+
+        text = unescape(value)
+        text = re.sub(r"<.*?>", "", text)
+        return text.strip()
+
+    def _parse_pub_date(self, value: Optional[str]) -> Optional[datetime]:
+        """
+        네이버 pubDate 문자열을 datetime으로 변환합니다.
+        """
+        if not value:
+            return None
+
+        try:
+            parsed = parsedate_to_datetime(value)
+            return parsed.replace(tzinfo=None)
+
+        except Exception:
+            return None

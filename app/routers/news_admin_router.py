@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.schemas.news_admin_schema import (
+    NewsCollectRunResponse,
     NewsCollectionLogListResponse,
     NewsCollectionSettingCreate,
     NewsCollectionSettingListResponse,
@@ -82,3 +83,19 @@ def list_news_collection_logs(
     service: NewsAdminService = Depends(get_news_admin_service),
 ):
     return service.list_logs(limit=limit)
+
+@router.post(
+    "/collect/run",
+    response_model=NewsCollectRunResponse,
+)
+def run_news_collection(
+    setting_id: int | None = Query(default=None, ge=1),
+    service: NewsAdminService = Depends(get_news_admin_service),
+):
+    """
+    뉴스 수집 설정을 기준으로 수동 뉴스 수집을 실행합니다.
+
+    - setting_id가 없으면 활성화된 전체 키워드를 수집합니다.
+    - setting_id가 있으면 해당 설정 1개만 수집합니다.
+    """
+    return service.run_news_collection(setting_id=setting_id)

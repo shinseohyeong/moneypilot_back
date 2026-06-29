@@ -69,3 +69,23 @@ class NewsCollectionLogResponse(BaseModel):
 class NewsCollectionLogListResponse(BaseModel):
     total_count: int
     items: List[NewsCollectionLogResponse]
+
+class NewsCollectKeywordResult(BaseModel):
+    setting_id: int
+    keyword: str
+    provider: str
+    requested_count: int
+    saved_count: int
+    duplicated_count: int
+    status: str
+    error_message: Optional[str] = None
+
+
+class NewsCollectRunResponse(BaseModel):
+    total_settings: int
+    success_count: int
+    failed_count: int
+    total_requested_count: int
+    total_saved_count: int
+    total_duplicated_count: int
+    items: List[NewsCollectKeywordResult]
