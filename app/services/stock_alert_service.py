@@ -20,6 +20,7 @@ from app.schemas.stock_alert_schema import (
     StockAlertReadResponse,
     StockAlertResponse,
 )
+from app.core.disclaimer import get_investment_disclaimer
 
 
 class StockAlertService:

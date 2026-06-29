@@ -7,7 +7,7 @@
 
 from datetime import date
 from decimal import Decimal
-from typing import Any, List
+from typing import Any
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
@@ -20,13 +20,11 @@ from app.schemas.stock_report_schema import (
     StockReportListResponse,
     StockReportResponse,
 )
+from app.core.disclaimer import get_investment_disclaimer
+
 
 
 class StockReportService:
-    DISCLAIMER = (
-        "본 리포트는 투자 권유가 아니며, 주식 시세와 뉴스 기반 참고 정보입니다. "
-        "투자 판단과 책임은 사용자 본인에게 있습니다."
-    )
 
     def __init__(self, db: Session):
         self.db = db
@@ -55,7 +53,7 @@ class StockReportService:
                 sector_summary=None,
                 watchlist_summary=f"총 {len(watchlist_rows)}개의 관심종목을 기준으로 리포트를 생성했습니다.",
                 risk_summary=None,
-                disclaimer=self.DISCLAIMER,
+                disclaimer=get_investment_disclaimer(),
             )
 
             self.repository.create_report(report)
@@ -128,7 +126,7 @@ class StockReportService:
                 sector_summary=report.sector_summary,
                 watchlist_summary=report.watchlist_summary,
                 risk_summary=report.risk_summary,
-                disclaimer=report.disclaimer,
+                disclaimer=report.disclaimer or get_investment_disclaimer(),
                 created_at=report.created_at,
                 items=[
                     self._to_item_response(
@@ -173,7 +171,7 @@ class StockReportService:
             sector_summary=report.sector_summary,
             watchlist_summary=report.watchlist_summary,
             risk_summary=report.risk_summary,
-            disclaimer=report.disclaimer,
+            disclaimer=report.disclaimer or get_investment_disclaimer(),
             created_at=report.created_at,
             items=[
                 self._to_item_response(
