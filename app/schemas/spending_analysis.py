@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, field_serializer
 from typing import List, Optional
 from datetime import datetime
 from decimal import Decimal
@@ -51,3 +51,185 @@ class MonthlySummaryResponse(BaseModel):
   
   class Config:
     from_attributes = True
+
+
+# --------------------------------------------------------------
+#  카테고리
+# --------------------------------------------------------------
+
+class CategorySpendingResponse(BaseModel):
+  """ 월별 카테고리별 지출 조회 응답 """
+  id: int
+  summary_id: int
+  user_id:int
+  month: str
+  
+  category: str
+  category_amount: int
+  category_ratio: Decimal
+  
+  transaction_count: int
+  previous_category_amount: int
+  spending_diff: int
+  spending_change_rate: Decimal
+  
+  created_at: datetime
+  
+  @field_validator(
+    "category_amount",
+    "previous_category_amount",
+    "spending_diff",
+    mode="before",
+  )
+  @classmethod
+  def decimal_to_int(cls, value):
+    if value is None:
+      return 0
+
+    return int(value)
+  
+  class Config:
+    from_attributes = True
+  
+
+class OverspendingCategoryItemResponse(BaseModel):
+  """ 과소비 카테고리 항목 응답 """
+  category: str
+  category_amount: Decimal
+  category_ratio: Decimal
+  previous_category_amount: Decimal
+  spending_diff: Decimal
+  spending_change_rate: Decimal
+  reason: str
+  
+  @field_serializer(
+    "category_amount",
+    "previous_category_amount",
+    "spending_diff",
+  )
+  def serialize_decimal_to_int(self, value: Decimal) -> int:
+    return int(value or 0)
+
+  @field_serializer(
+    "category_ratio",
+    "spending_change_rate",
+  )
+  def serialize_decimal_to_float(self, value: Decimal) -> float:
+    return float(value or 0)
+
+  class Config:
+    from_attributes = True
+
+
+class MonthlyOverspendingResponse(BaseModel):
+  """ 월별 과소비 카테고리 응답 """
+  month: str 
+  top_spending_categories: list[OverspendingCategoryItemResponse]
+  top_increased_categories: list[OverspendingCategoryItemResponse]
+
+
+# --------------------------------------------------------------
+#  고정비 / 변동비 항목 조회
+# --------------------------------------------------------------
+class ExpenseTypeItemResponse(BaseModel):
+  """ 고정비/변동비 항목 응답 """
+  amount: int
+  ratio: float
+
+class ExpenseTypesResponse(BaseModel):
+  """ 월별 고정비/변동비 조회 응답 """
+  month: str
+  total_spending: int
+  fixed_expense: ExpenseTypeItemResponse
+  variable_expense: ExpenseTypeItemResponse
+  
+# --------------------------------------------------------------
+#  카드별 사용금액 조회
+# --------------------------------------------------------------
+class CardSpendingItemResponse(BaseModel):
+  """ 카드별 사용금액 항목 응답 """
+  card_name: str
+  card_amount: int
+  card_ratio: float
+  transaction_count: int
+
+class MonthlyCardSpendingResponse(BaseModel):
+  """ 월별 카드별 사용금액 조회 응답 """
+  month: str 
+  total_spending: int
+  cards: list[CardSpendingItemResponse]
+
+
+# --------------------------------------------------------------
+#  전월 대비 사용금액, 6개월 평균 예상 사용금액 조회
+# --------------------------------------------------------------
+class MonthlySpendingForecastItem(BaseModel):
+  """ 전월 대비 사용금액  """
+  month: str
+  label: str
+  total_spending: int
+  spending_diff: int
+  spending_change_rate: float
+  
+  @field_validator("total_spending", "spending_diff", mode="before")
+  @classmethod
+  def decimal_to_int(cls, value):
+    if value is None:
+      return 0
+
+    if isinstance(value, Decimal):
+      return int(value)
+
+    return int(value)
+  
+class MonthlySpendingForecastResponse(BaseModel):
+  month: str
+  expected_spending: int
+  monthly_items: list[MonthlySpendingForecastItem]
+  
+  @field_validator("expected_spending", mode="before")
+  @classmethod
+  def decimal_to_int(cls, value):
+    if value is None:
+      return 0
+
+    if isinstance(value, Decimal):
+      return int(value)
+
+    return int(value)
+  
+# --------------------------------------------------------------
+#  월별 소비 리포트
+# --------------------------------------------------------------
+class AnalysisReportResponse(BaseModel):
+  """ AI 소비 분석 리포트 조회 / 생성 응답 스키마 """
+  id: int
+  summary_id: int
+  user_id: int
+  month: str
+  
+  report_title: str
+  summary_text: str
+  category_text: str | None = None
+  overspending_text: str | None = None
+  card_text: str | None = None
+  compare_text: str | None = None
+  recommendation_text: str | None = None
+  agent_response: str | None = None
+  
+  created_at: datetime
+  
+  class Config:
+    from_attributes = True
+
+
+class LLMReportResult(BaseModel):
+  """ LLM 응답 검증용 스키마 """
+  report_title: str
+  summary_text: str
+  category_text: str | None = None
+  overspending_text: str | None = None
+  card_text: str | None = None
+  compare_text: str | None = None
+  recommendation_text: str | None = None
+  agent_response: str | None = None

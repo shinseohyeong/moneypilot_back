@@ -1,12 +1,20 @@
 import re
 from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP
+from dateutil.relativedelta import relativedelta
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.repositories.spending_repository import SpendingAnalysisRepository
-
+from app.models.spending_analysis_model import CategorySpending, CardSpending
+from app.repositories.spending_repository import (
+  SpendingAnalysisRepository, SpendingRepository,
+)
+from app.repositories.spending_repository import SpendingRepository
+from app.schemas.spending_analysis import (
+  MonthlySpendingForecastItem,
+  MonthlySpendingForecastResponse,
+)
 
 class SpendingAnalysisService:
   def __init__(self, db:Session):
@@ -198,6 +206,572 @@ class SpendingAnalysisService:
       )
     
     return summary
+  
+  # --------------------------------------------------------------
+  #  고정비 / 변동비 조회
+  # --------------------------------------------------------------
+  def get_monthly_expense_types(
+    self,
+    user_id: int,
+    month: str,
+  ) -> dict:
+    """
+    월별 고정비/변동비 금액과 총지출 대비 비율 조회
+    계산 기준:
+    - 고정비 비율 = 고정비 / 총지출 * 100
+    - 변동비 비율 = 변동비 / 총지출 * 100
+    """
     
+    self.validate_month_format(month)
+    
+    summary = self.repository.get_monthly_summary(
+      user_id=user_id,
+      month=month,
+    )
+    
+    if not summary:
+      raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="해당 월의 소비 요약 데이터가 없습니다. 먼저 월별 분석을 실행해주세요.",
+      )
+    
+    total_spending = Decimal(summary.total_spending or 0)
+    fixed_expense = Decimal(summary.fixed_expense or 0)
+    variable_expense = Decimal(summary.variable_expense or 0)
+    
+    if total_spending == 0:
+      fixed_ratio = Decimal("0")
+      variable_ratio = Decimal("0")
+    else:
+      fixed_ratio = (
+        fixed_expense / total_spending * Decimal("100")
+      ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+      
+      variable_ratio = (
+        variable_expense / total_spending * Decimal("100")
+      ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+      
+    return {
+      "month": month,
+      "total_spending": int(total_spending),
+      "fixed_expense": {
+        "amount": int(fixed_expense),
+        "ratio": float(fixed_ratio),
+      },
+      "variable_expense": {
+        "amount": int(variable_expense),
+        "ratio": float(variable_ratio),
+      },
+    }
+      
+
+
+# --------------------------------------------------------------
+#  카테고리
+# --------------------------------------------------------------
+class SpendingService:
+  def __init__(self, db: Session):
+    self.db = db
+    self.repository = SpendingRepository(db)
+  
+  def validate_month_format(self, month:str) -> None:
+    """
+    month가 YYYY-MM 형식인지 검증한다.
+    ex) 2026-06
+    """
+    
+    if not re.match(r"^\d{4}-\d{2}$", month):
+      raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="month는 YYYY-MM 형식이어야 합니다. ex) 2026-06",
+      )
+      
+    try:
+      datetime.strptime(month, "%Y-%m")
+    except ValueError:
+      raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="올바르지 않은 month 값입니다. ex) 2026-06",
+      )
+  
+  def save_monthly_category_spendings(
+    self,
+    user_id: int,
+    month: str,
+  ) -> list[CategorySpending]:
+    """ 특정 월의 거래내역을 카테고리별로 합산하여 저장 """
+    
+    summary = self.repository.get_monthly_summary_by_user_and_month(
+      user_id=user_id,
+      month=month,
+    )
+    
+    if not summary:
+      raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="해당 월의 월별 요약 데이터가 없습니다.",
+      )
+    
+    category_totals = self.repository.get_category_totals_by_user_and_month(
+      user_id=user_id,
+      month=month,
+    )
+    
+    if not category_totals:
+      raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="해당 월의 거래내역이 없습니다.",
+      )
+    
+    #  현재 month 기준으로 전월 계산
+    current_month_date = datetime.strptime(month, "%Y-%m")
+    previous_month = (
+      current_month_date - relativedelta(months=1)
+    ).strftime("%Y-%m")
+      
+    # 지출 금액 합계 계산
+    total_amount = sum(
+      abs(Decimal(row.category_amount or 0))
+      for row in category_totals
+    )
+    
+    if total_amount == 0:
+      raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="카테고리별 지출 합계가 0원입니다.",
+      )
+    
+    # 기존 데이터 삭제 후 재저장
+    self.repository.delete_category_spendings_by_summary_id(
+      summary_id=summary.id,
+    )
+    
+    category_spendings = []
+    
+    for row in category_totals:
+      category_amount = abs(Decimal(row.category_amount or 0))
+      
+      category_ratio = round(
+        (category_amount / total_amount) * Decimal("100"),
+        2,
+      )
+      
+      # 전월 같은 카테고리 지출액 조회
+      previous_category_amount = self.repository.get_previous_category_amount(
+        user_id=user_id,
+        previous_month=previous_month,
+        category=row.category,
+      )
+      
+      # 전월 지출액도 저장
+      previous_category_amount = abs(Decimal(previous_category_amount or 0))
+      
+      # 전월 대비 증감액 계산
+      spending_diff = category_amount - previous_category_amount
+      
+      if previous_category_amount == 0:
+        spending_change_rate = Decimal("0")
+      else:
+        spending_change_rate = round(
+          (spending_diff / previous_category_amount) * Decimal("100"),
+          2,
+        )
+      
+      category_spending = CategorySpending(
+        summary_id=summary.id,
+        user_id=user_id,
+        month=month,
+        category=row.category,
+        category_amount=category_amount,
+        category_ratio=category_ratio,
+        transaction_count=row.transaction_count,
+        previous_category_amount=previous_category_amount,
+        spending_diff=spending_diff,
+        spending_change_rate=spending_change_rate,
+      )
+      
+      category_spendings.append(category_spending)
+    
+    self.repository.create_category_spendings(category_spendings)
+    
+    self.db.commit()
+    
+    for category_spending in category_spendings:
+      self.db.refresh(category_spending)
+      
+    return category_spendings
+    
+  
+  def _build_top_spending_item(self, item) -> dict:
+    """ 이번 달 지출 금액이 큰 카테고리 응답 데이터 만듬 """
+    
+    category_amount = Decimal(item.category_amount or 0)
+    category_ratio = Decimal(item.category_ratio or 0)
+    previous_category_amount = Decimal(item.previous_category_amount or 0)
+    spending_diff = Decimal(item.spending_diff or 0)
+    spending_change_rate = Decimal(item.spending_change_rate or 0)
+    
+    return {
+      "category": item.category,
+      "category_amount": category_amount,
+      "category_ratio" : category_ratio,
+      "previous_category_amount" : previous_category_amount,
+      "spending_diff" : spending_diff,
+      "spending_change_rate" : spending_change_rate,
+      "reason" : f"{item.category} 카테고리는 이번 달 {int(category_amount):,}원으로 지출 금액이 높은 항목입니다.",
+    }
+    
+  
+  def _build_top_increased_item(self, item) -> dict:
+    """ 전월 대비 증가액이 큰 카테고리 응답 데이터 만듬 """
+    
+    category_amount = Decimal(item.category_amount or 0)
+    category_ratio = Decimal(item.category_ratio or 0)
+    previous_category_amount = Decimal(item.previous_category_amount or 0)
+    spending_diff = Decimal(item.spending_diff or 0)
+    spending_change_rate = Decimal(item.spending_change_rate or 0)
+    
+    return {
+      "category": item.category,
+      "category_amount": category_amount,
+      "category_ratio" : category_ratio,
+      "previous_category_amount" : previous_category_amount,
+      "spending_diff" : spending_diff,
+      "spending_change_rate" : spending_change_rate,
+      "reason" : f"{item.category} 카테고리는 전월보다 {int(spending_diff):,}원 증가했습니다.",
+    }
+    
+    
+  def get_monthly_overspending_categories(
+    self,
+    user_id: int, 
+    month: str,
+  ) -> dict:
+    """
+    월별 과소비 카테고리 후보 조회
+    기준: 
+    1. 이번달 지출 금액이 큰 카테고리 TOP 3
+    2. 전월 대비 증가액이 큰 카테고리 TOP 3
+    """
+    
+    self.validate_month_format(month)
+    
+    summary = self.repository.get_monthly_summary_by_user_and_month(
+      user_id=user_id,
+      month=month,
+    )
+    
+    if not summary:
+      raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="해당 월의 월별 요약 데이터가 없습니다. 먼저 월별 분석을 실행해주세요.",
+      )
+    
+    category_spendings = self.repository.get_category_spendings_by_user_and_month(
+      user_id=user_id,
+      month=month,
+    )
+    
+    if not category_spendings:
+      raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="해당 월의 카테고리 분석 데이터가 없습니다. 먼저 카테고리 분석을 실행해주세요.",
+      )
+    
+    # 1. 이번 달 가장 많이 쓴 카테고리 TOP 3
+    top_spending_categories = sorted(
+      category_spendings,
+      key=lambda item: Decimal(item.category_amount or 0),
+      reverse=True,
+    )[:3]
+    
+    # 2. 전월보다 많이 늘어난 카테고리 TOP 3
+    increased_categories = [
+      item
+      for item in category_spendings
+      if Decimal(item.spending_diff or 0) > 0
+    ]
+    
+    top_increased_categories = sorted(
+      increased_categories,
+      key=lambda item: Decimal(item.spending_diff or 0),
+      reverse=True,
+    )[:3]
+
+    return {
+      "month": month,
+      "top_spending_categories": [
+        self._build_top_spending_item(item)
+        for item in top_spending_categories
+      ],
+      "top_increased_categories": [
+        self._build_top_increased_item(item)
+        for item in top_increased_categories
+      ],
+    }
+    
+  # --------------------------------------------------------------
+  #  카드별/현금별 사용금액 조회
+  # --------------------------------------------------------------
+  def save_monthly_card_spendings(
+    self,
+    user_id: int,
+    month: str,
+  ) -> list[CardSpending]:
+    """
+    특정 월의 거래내역을 카드별/현금별로 합산하여 저장
+    처리 흐름:
+    1. 월별 요약 데이터 확인
+    2. transactions와 card_statements 기준으로 카드별 사용금액 계산
+    3. statement_id가 없는 거래 -> "현금" 처리
+    4. 총지출 대비 카드별 사용비율 계산
+    5. 기존 카드별 사용금액 데이터를 삭제한 뒤 새로 저장
+    """
+    summary = self.repository.get_monthly_summary_by_user_and_month(
+      user_id=user_id,
+      month=month,
+    )
+    
+    if not summary:
+      raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="해당 월의 월별 요약 데이터가 없습니다. 먼저 월별 분석을 실행해주세요.",
+      )
+      
+    total_spending = Decimal(summary.total_spending or 0)
+    
+    if total_spending == 0:
+      raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="총지출이 0원이라 카드별 사용비율을 계산할 수 없습니다.",
+      )
+    
+    card_totals = self.repository.get_card_totals_by_user_and_month(
+      user_id=user_id,
+      month=month,
+    )
+    
+    if not card_totals:
+      raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="해당 월의 카드/현금 거래내역이 없습니다.",
+      )
+      
+    try:
+      self.repository.delete_card_spendings_by_summary_id(
+        summary_id=summary.id,
+      )
+      
+      card_spendings = []
+      
+      for row in card_totals:
+        card_amount = Decimal(row.card_amount or 0)
+        
+        card_ratio = (
+          card_amount / total_spending * Decimal("100")
+        ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        
+        card_spending = CardSpending(
+          summary_id = summary.id,
+          user_id=user_id,
+          month=month,
+          card_name=row.card_name or "현금",
+          card_amount=card_amount,
+          card_ratio=card_ratio,
+          transaction_count=row.transaction_count,
+        )
+        
+        card_spendings.append(card_spending)
+        
+      self.repository.create_card_spendings(card_spendings)
+      
+      self.db.commit()
+      
+      for card_spending in card_spendings:
+        self.db.refresh(card_spending)
+      
+      return card_spendings
+    
+    except Exception:
+      self.db.rollback()
+      raise
+  
+  
+  def get_monthly_card_spendings(
+    self,
+    user_id: int,
+    month: str,
+  ) -> dict:
+    """ 
+    저장된 월별 카드별 사용금액 조회 
+    """
+    
+    summary = self.repository.get_monthly_summary_by_user_and_month(
+      user_id=user_id,
+      month=month,
+    )
+    
+    if not summary:
+      raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="해당 월의 월별 요약 데이터가 없스빈다. 먼저 월별 분석을 실행해주세요.",
+      )
+      
+    card_spendings = self.repository.get_card_spendings_by_user_and_month(
+      user_id=user_id,
+      month=month,
+    )
+    
+    if not card_spendings:
+      raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="해당 월의 카드벼 사용금액 데이터가 없습니다. 먼저 카드별 분석을 실행해주세요.",
+      )
+      
+    return {
+      "month": month,
+      "total_spending": int(Decimal(summary.total_spending or 0)),
+      "cards": [
+        {
+          "card_name": item.card_name,
+          "card_amount": int(Decimal(item.card_amount or 0)),
+          "card_ratio": int(Decimal(item.card_ratio or 0)),
+          "transaction_count": item.transaction_count,
+        }
+        for item in card_spendings
+      ],
+    }
+    
+  # --------------------------------------------------------------
+  #  월별 사용금액 예측 조회
+  # --------------------------------------------------------------
+  def get_monthly_spending_forecast(
+    self,
+    user_id: int,
+    month: str,
+  ) -> dict:
+    """ 
+    최근 6개월 사용금액과 이번달 예상 사용금액 조회 
+    처리흐름:
+    1. 요청 월 형식 검증
+    2. 요청 월 기준 최근 6개월 범위 계산
+    3. 최근 6개월 월별 요약 데이터 조회
+    4. 데이터가 없는 월은 0으로 처리
+    5. 월별 총사용금액, 증감액, 증감률 계산
+    6. 최근 6개월 평균으로 이번달 예상 사용금액 계산 (사용금액 없는 달은 평균에서 제외)
+    """
+    self.validate_month_format(month)
+    
+    start_month = self.get_month_offset(month=month, offset=-5)
+    end_month = month
+    
+    summaries = self.repository.get_monthly_summaries_by_user_and_month_range(
+      user_id=user_id,
+      start_month=start_month,
+      end_month=end_month,
+    )
+    
+    summary_map = {
+      summary.month: summary
+      for summary in summaries
+    }
+    
+    months = self.get_month_range(
+      start_month=start_month,
+      end_month=end_month,
+    )
+    
+    monthly_items = []
+    
+    total_spending_sum = 0
+    existing_month_count = 0
+    
+    for target_month in months:
+      summary = summary_map.get(target_month)
+      
+      if summary:
+        total_spending = int(summary.total_spending)
+        spending_diff = int(summary.spending_diff)
+        spending_change_rate = float(summary.spending_change_rate)
+        
+        # 예상 사용금액 평균 계산은 실제 데이터가 있는 월만 포함
+        total_spending_sum += total_spending
+        existing_month_count += 1
+        
+      else:
+        # 데이터 없는 월은 프론트에 0으로 계산 
+        total_spending = 0
+        spending_diff = 0
+        spending_change_rate = 0.0
+      
+      monthly_items.append(
+        MonthlySpendingForecastItem(
+          month=target_month,
+          label=self.make_month_label(target_month),
+          total_spending=total_spending,
+          spending_diff=spending_diff,
+          spending_change_rate=spending_change_rate,
+        )
+      )
+    
+    expected_spending = 0
+    
+    if existing_month_count > 0:
+      expected_spending = int(total_spending_sum / existing_month_count)
+    
+    return MonthlySpendingForecastResponse(
+      month=month,
+      expected_spending=expected_spending,
+      monthly_items=monthly_items,
+    )
+  
+  
+  def get_month_offset(
+    self, 
+    month: str, 
+    offset: int,
+  ) -> str:
+    """ 기준 월에서 offset만큼 이동한 월 반환 """
+    
+    year, month_number = map(int, month.split("-"))
+    
+    total_month = year * 12 + month_number - 1 + offset
+    
+    new_year = total_month // 12
+    new_month = total_month % 12 + 1
+    
+    return f"{new_year:04d}-{new_month:02d}"
+
+  
+  def get_month_range(
+    self, 
+    start_month: str,
+    end_month: str,
+  ) -> list[str]:
+    """ 시작 월부터 종료 월까지 YYYY-MM 목록 생성 """
+    
+    months = []
+    current_month = start_month
+    
+    while current_month <= end_month:
+      months.append(current_month)
+      current_month = self.get_month_offset(
+        month=current_month,
+        offset=1,
+      )
+    
+    return months
+  
+  
+  def make_month_label(
+    self, 
+    month: str,
+  ) -> str:
+    """ YYY-MM 형식을 MM월 라벨로 변환 """
+    
+    month_number = int(month.split("-")[1])
+    
+    return f"{month_number}월"
+  
   
   

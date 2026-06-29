@@ -11,16 +11,12 @@ from typing import Any, List
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from app.core.disclaimer import get_investment_disclaimer
 from app.schemas.news_sentiment_schema import NewsSentimentResponse
 from app.services.news_summary_service import NewsSummaryService
 
 
 class NewsSentimentService:
-    DEFAULT_DISCLAIMER = (
-        "본 내용은 투자 권유가 아니며, 뉴스 기반 참고 정보입니다. "
-        "투자 판단과 책임은 사용자 본인에게 있습니다."
-    )
-
     def __init__(self, db: Session):
         self.db = db
         self.news_summary_service = NewsSummaryService(db)
@@ -89,11 +85,7 @@ class NewsSentimentService:
             ),
             investment_note=getattr(summary, "investment_note", None),
             model_name=getattr(summary, "model_name", None),
-            disclaimer=getattr(
-                summary,
-                "disclaimer",
-                self.DEFAULT_DISCLAIMER,
-            ),
+            disclaimer=get_investment_disclaimer(),
         )
 
     def _normalize_sentiment(self, sentiment: Any) -> str:
