@@ -10,6 +10,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from app.core.database import Base
 
@@ -37,16 +38,16 @@ class StockPrice(Base):
 
     price_date = Column(Date, nullable=False)
     close_price = Column(DECIMAL(15, 2), nullable=False)
-    previous_close = Column(DECIMAL(15, 2), default=0)
-    price_change = Column(DECIMAL(15, 2), default=0)
-    change_rate = Column(DECIMAL(6, 2), default=0)
+    previous_close = Column(DECIMAL(15, 2), server_default=text("0"))
+    price_change = Column(DECIMAL(15, 2), server_default=text("0"))
+    change_rate = Column(DECIMAL(6, 2), server_default=text("0"))
 
-    open_price = Column(DECIMAL(15, 2), default=0)
-    high_price = Column(DECIMAL(15, 2), default=0)
-    low_price = Column(DECIMAL(15, 2), default=0)
+    open_price = Column(DECIMAL(15, 2), server_default=text("0"))
+    high_price = Column(DECIMAL(15, 2), server_default=text("0"))
+    low_price = Column(DECIMAL(15, 2), server_default=text("0"))
 
-    volume = Column(BigInteger, default=0)
-    trade_value = Column(DECIMAL(20, 2), default=0)
+    volume = Column(BigInteger, server_default=text("0"))
+    trade_value = Column(DECIMAL(20, 2), server_default=text("0"))
 
     source = Column(String(50), nullable=False, default="PUBLIC_DATA")
     fetched_at = Column(DateTime, server_default=func.now())
@@ -67,6 +68,7 @@ class StockWatchlist(Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     user_id = Column(BigInteger, ForeignKey("users.id"), nullable=False)
+    category_id = Column(BigInteger, ForeignKey("stock_watchlist_categories.id"), nullable=False)
     stock_id = Column(BigInteger, ForeignKey("stocks.id"), nullable=False)
 
     memo = Column(String(255), nullable=True)
@@ -77,7 +79,33 @@ class StockWatchlist(Base):
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
     __table_args__ = (
-        UniqueConstraint("user_id", "stock_id", name="uk_watchlist_user_stock"),
+        UniqueConstraint(
+            "user_id",
+            "category_id",
+            "stock_id",
+            name="uk_watchlist_user_category_stock",
+        ),
+    )
+
+class StockWatchlistCategory(Base):
+    __tablename__ = "stock_watchlist_categories"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    user_id = Column(BigInteger, ForeignKey("users.id"), nullable=False)
+
+    category_name = Column(String(100), nullable=False)
+    display_order = Column(BigInteger, nullable=False, server_default=text("0"))
+    is_default = Column(Boolean, nullable=False, default=False)
+
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "category_name",
+            name="uk_watchlist_category_user_name",
+        ),
     )
 
 
