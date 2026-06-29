@@ -5,7 +5,8 @@
 # 20260619 인계 사항 : 나중에 GET /api/v1/stocks/{stock_id}를 추가할 때 /search 라우터를 {stock_id}보다 위에 생성
 
 from typing import Optional
-from fastapi import APIRouter, Depends, Query
+
+from fastapi import APIRouter, Depends, Path, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -76,32 +77,11 @@ def get_stock_alert_service(db: Session = Depends(get_db)) -> StockAlertService:
     description="종목명 또는 종목코드로 주식을 검색합니다.",
 )
 def search_stocks(
-    keyword: str = Query(
-        ...,
-        min_length=1,
-        description="검색어. 예: 삼성, 005930",
-    ),
-    market: Optional[str] = Query(
-        None,
-        description="시장 구분. 예: KOSPI, KOSDAQ",
-    ),
-    limit: int = Query(
-        20,
-        ge=1,
-        le=100,
-        description="검색 결과 최대 개수",
-    ),
+    keyword: str = Query(..., min_length=1, description="검색어. 예: 삼성, 005930"),
+    market: Optional[str] = Query(None, description="시장 구분. 예: KOSPI, KOSDAQ"),
+    limit: int = Query(20, ge=1, le=100, description="검색 결과 최대 개수"),
     db: Session = Depends(get_db),
 ):
-    """
-    주식 검색 API
-
-    사용 예:
-    GET /api/v1/stocks/search?keyword=삼성
-    GET /api/v1/stocks/search?keyword=005930
-    GET /api/v1/stocks/search?keyword=삼성&market=KOSPI&limit=10
-    """
-
     stock_service = StockService(db)
 
     return stock_service.search_stocks(

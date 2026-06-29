@@ -3,7 +3,6 @@
 #            SQLAlchemy 쿼리는 여기에서 담당
 
 from typing import List, Optional
-from datetime import datetime
 
 from sqlalchemy import or_
 from sqlalchemy.orm import Session

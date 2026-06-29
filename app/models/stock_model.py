@@ -49,6 +49,12 @@ class StockPrice(Base):
     volume = Column(BigInteger, server_default=text("0"))
     trade_value = Column(DECIMAL(20, 2), server_default=text("0"))
 
+    # 공공데이터 상장주식
+    listed_shares = Column(BigInteger, server_default=text("0"))
+
+    # 공공데이터 시가총액
+    market_cap = Column(DECIMAL(25, 2), server_default=text("0"))
+
     source = Column(String(50), nullable=False, default="PUBLIC_DATA")
     fetched_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
