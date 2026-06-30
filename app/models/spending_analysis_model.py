@@ -195,60 +195,6 @@ class AnalysisReport(Base):
     created_at = Column(DateTime, server_default=func.now())
 
 
-class OverspendingItem(Base):
-    __tablename__ = "overspending_items"
-
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-
-    summary_id = Column(
-        BigInteger,
-        ForeignKey("monthly_spending_summaries.id"),
-        nullable=False,
-    )
-
-    user_id = Column(
-        BigInteger,
-        ForeignKey("users.id"),
-        nullable=False,
-    )
-
-    # 예: 2026-06
-    month = Column(String(7), nullable=False)
-
-    category = Column(String(50), nullable=False)
-
-    category_amount = Column(
-        DECIMAL(15, 2),
-        nullable=False,
-    )
-
-    category_ratio = Column(
-        DECIMAL(6, 2),
-        nullable=False,
-    )
-
-    overspending_threshold = Column(
-        DECIMAL(6, 2),
-        nullable=False,
-    )
-
-    previous_category_amount = Column(
-        DECIMAL(15, 2),
-        nullable=True,
-        server_default=text("0"),
-    )
-
-    spending_change_rate = Column(
-        DECIMAL(6, 2),
-        nullable=True,
-        server_default=text("0"),
-    )
-
-    reason = Column(String(255), nullable=True)
-
-    created_at = Column(DateTime, server_default=func.now())
-
-
 class CardSpending(Base):
     __tablename__ = "card_spendings"
 
