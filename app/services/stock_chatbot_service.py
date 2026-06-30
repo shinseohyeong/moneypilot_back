@@ -18,7 +18,7 @@ from app.schemas.stock_chatbot_schema import (
     StockChatbotStockBrief,
 )
 from app.services.user_risk_context_service import UserRiskContextService
-
+from app.clients.llm_client import get_llm_client
 
 class StockChatbotService:
     """
@@ -32,6 +32,7 @@ class StockChatbotService:
         self.db = db
         self.repository = StockChatbotRepository(db)
         self.user_risk_context_service = UserRiskContextService(db)
+        self.llm_client = get_llm_client()
 
     def ask_stock_chatbot(
         self,
@@ -102,12 +103,27 @@ class StockChatbotService:
                 )
             )
 
-        answer = self._build_answer(
+        fallback_answer = self._build_answer(
             user_message=request.message,
             items=items,
             risk_label=risk_label,
             risk_guide=risk_guide,
         )
+
+        context = self._build_llm_context(
+            user_message=request.message,
+            items=items,
+            risk_type=risk_type,
+            risk_label=risk_label,
+            risk_guide=risk_guide,
+        )
+
+        ai_answer = self._generate_ai_answer_or_none(
+            user_message=request.message,
+            context=context,
+        )
+
+        answer = ai_answer if ai_answer else fallback_answer
 
         return StockChatbotResponse(
             user_id=user_id,
@@ -244,3 +260,72 @@ class StockChatbotService:
         lines.append(get_investment_disclaimer())
 
         return "\n".join(lines)
+    
+    def _build_llm_context(
+        self,
+        user_message: str,
+        items: list[StockChatbotStockBrief],
+        risk_type: str,
+        risk_label: str,
+        risk_guide: str,
+    ) -> str:
+        """
+        LLM에 전달할 DB 기반 context를 생성합니다.
+        """
+        lines = []
+
+        lines.append(f"사용자 질문: {user_message}")
+        lines.append(f"투자성향 코드: {risk_type}")
+        lines.append(f"투자성향 라벨: {risk_label}")
+        lines.append(f"투자성향 해석 기준: {risk_guide}")
+        lines.append("")
+
+        for item in items:
+            lines.append(f"종목명: {item.stock_name}")
+            lines.append(f"종목코드: {item.stock_code}")
+            lines.append(f"최신 종가: {item.current_price}")
+            lines.append(f"변동률: {item.change_rate}")
+            lines.append(f"최근 뉴스 요약: {item.news_summary}")
+            lines.append(f"섹터 흐름: {item.sector_summary}")
+            lines.append(f"위험 요인: {item.risk_factors}")
+            lines.append("---")
+
+        lines.append(get_investment_disclaimer())
+
+        return "\n".join(lines)
+
+    def _generate_ai_answer_or_none(
+        self,
+        user_message: str,
+        context: str,
+    ) -> str | None:
+        """
+        LLM으로 자연어 답변을 생성합니다.
+
+        LLM 호출이 실패하면 None을 반환하고,
+        호출부에서는 기존 DB 기반 답변으로 fallback합니다.
+        """
+        system_prompt = (
+            "너는 MoneyPilot의 주식 정보 챗봇이다. "
+            "사용자에게 투자 권유를 하지 말고, 제공된 DB context 안의 정보만 바탕으로 답변한다. "
+            "확정적인 매수/매도 추천, 수익 보장, 목표가 제시는 하지 않는다. "
+            "뉴스, 시세, 섹터 흐름, 위험 요인을 균형 있게 설명한다. "
+            "한국어로 답변한다."
+        )
+
+        user_prompt = (
+            f"[사용자 질문]\n{user_message}\n\n"
+            f"[DB context]\n{context}\n\n"
+            "위 정보를 바탕으로 사용자가 이해하기 쉽게 답변해줘. "
+            "답변 마지막에는 투자 유의 문구를 짧게 포함해줘."
+        )
+
+        try:
+            llm_client = get_llm_client()
+            return llm_client.generate_text(
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+            )
+
+        except Exception:
+            return None
