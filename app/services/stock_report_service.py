@@ -21,6 +21,7 @@ from app.schemas.stock_report_schema import (
     StockReportResponse,
 )
 from app.core.disclaimer import get_investment_disclaimer
+from app.services.user_risk_context_service import UserRiskContextService
 
 
 
@@ -29,6 +30,7 @@ class StockReportService:
     def __init__(self, db: Session):
         self.db = db
         self.repository = StockReportRepository(db)
+        self.user_risk_context_service = UserRiskContextService(db)
 
     def generate_stock_report(self, user_id: int) -> StockReportResponse:
         """
@@ -44,12 +46,21 @@ class StockReportService:
 
         today = date.today()
 
+        risk_type = self.user_risk_context_service.get_user_risk_type(user_id=user_id)
+        risk_label = self.user_risk_context_service.get_risk_label(risk_type)
+        risk_interpretation_guide = (
+            self.user_risk_context_service.get_interpretation_guide(risk_type)
+        )
+
         try:
             report = StockReport(
                 user_id=user_id,
                 report_date=today,
                 report_title=f"{today} 관심종목 요약 리포트",
-                market_summary="사용자의 관심종목을 기준으로 현재가, 관련 뉴스, 섹터 흐름을 종합한 리포트입니다.",
+                market_summary=(
+                    "사용자의 관심종목을 기준으로 현재가, 관련 뉴스, 섹터 흐름을 종합한 리포트입니다. "
+                    f"현재 투자성향은 {risk_label}으로 반영했습니다."
+                ),
                 sector_summary=None,
                 watchlist_summary=f"총 {len(watchlist_rows)}개의 관심종목을 기준으로 리포트를 생성했습니다.",
                 risk_summary=None,
@@ -108,10 +119,15 @@ class StockReportService:
                 else "연결된 섹터 인사이트가 아직 없습니다."
             )
 
-            report.risk_summary = (
+            base_risk_summary = (
                 " ".join(risk_summary_parts)
                 if risk_summary_parts
                 else "현재 리포트 기준으로 뚜렷한 위험 요인은 확인되지 않았습니다."
+            )
+
+            report.risk_summary = (
+                f"{base_risk_summary} "
+                f"[투자성향 해석: {risk_label}] {risk_interpretation_guide}"
             )
 
             self.db.commit()
