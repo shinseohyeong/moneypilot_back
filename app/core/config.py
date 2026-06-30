@@ -2,6 +2,7 @@
 import os
 
 from dotenv import load_dotenv
+from pydantic_settings import BaseSettings
 
 
 load_dotenv()
@@ -14,6 +15,8 @@ class Settings:
     DB_PASSWORD: str = os.getenv("DB_PASSWORD", "")
     DB_NAME: str = os.getenv("DB_NAME", "")
 
+    FINANCE_API_KEY: str = os.getenv("FINANCE_API_KEY", "")
+
     @property
     def DATABASE_URL(self) -> str:
         return (
@@ -21,6 +24,9 @@ class Settings:
             f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
             "?charset=utf8mb4"
         )
+    
+    class Config:
+        env_file=".env"
 
 
 settings = Settings()
