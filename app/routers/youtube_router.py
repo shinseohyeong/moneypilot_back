@@ -8,7 +8,11 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.schemas.youtube_search_schema import YoutubeSearchResponse
+from app.schemas.youtube_search_schema import (
+    YoutubeSearchResponse,
+    YoutubeSummaryRequest,
+    YoutubeSummaryResponse,
+)
 from app.services.youtube_search_service import YoutubeSearchService
 
 
@@ -43,3 +47,17 @@ def search_youtube_videos(
         max_results=max_results,
         order=order,
     )
+
+@router.post(
+    "/summary",
+    response_model=YoutubeSummaryResponse,
+    summary="유튜브 경제 영상 요약",
+)
+def summarize_youtube_video(
+    request: YoutubeSummaryRequest,
+    service: YoutubeSearchService = Depends(get_youtube_search_service),
+) -> YoutubeSummaryResponse:
+    """
+    선택한 유튜브 영상의 제목, 설명, 자막을 기반으로 경제/금융 요약을 생성합니다.
+    """
+    return service.summarize_youtube_video(request)
