@@ -188,6 +188,6 @@ pnpm-debug.log*
 *.swo
 
 # ==========================================
-# CLAUDE
+# Chroma vector store
 # ==========================================
-CLAUDE.md
+storage/vectorstores/
