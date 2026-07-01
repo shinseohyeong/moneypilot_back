@@ -13,6 +13,7 @@ from app.routers import spending_router
 from app.routers import stock_router
 from app.routers import transaction_router
 from app.routers import user_router
+from app.routers import stock_rag_router
 
 from app.routers.finance_profile_router import router as finance_profile_router
 from app.routers.news_admin_router import router as news_admin_router
@@ -54,3 +55,4 @@ app.include_router(spending_router.router, prefix="/api/spending", tags=["Spendi
 app.include_router(stock_router.router)
 app.include_router(transaction_router.router, prefix="/api/transactions", tags=["Transactions"])
 app.include_router(user_router.router, prefix="/api/users",  tags=["Users"])
+app.include_router(stock_rag_router.router, prefix="/api/rag", tags=["RAG"],)
