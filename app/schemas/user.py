@@ -1,12 +1,11 @@
-from datetime import datetime
+from datetime import datetime, date
 from typing import Optional
 
 from pydantic import BaseModel, Field
 
 
 class UserProfileUpdate(BaseModel):
-    username: Optional[str] = Field(None, min_length=2, max_length=100)
-    phone: Optional[str] = Field(None, max_length=30)
+    username: Optional[str] = Field(None, min_length=2, max_length=50)
     password: Optional[str] = Field(None, min_length=8, max_length=128)
 
 
@@ -14,10 +13,11 @@ class UserResponse(BaseModel):
     id: int
     email: str
     username: str
-    phone: Optional[str]
+    profile_image_url: Optional[str]
     login_type: str
+    birth_date: Optional[date] = None
+    gender: Optional[str] = None
     role: str
-    login_type: str
     is_active: bool
     created_at: datetime
 
