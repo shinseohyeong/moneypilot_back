@@ -69,6 +69,9 @@ class Settings:
     ).strip()
     ollama_model: str = (os.getenv("OLLAMA_MODEL", "llama3.1") or "").strip()
 
+    # YouTube API
+    youtube_api_key: str = (os.getenv("YOUTUBE_API_KEY") or "").strip()
+
     @property
     def DATABASE_URL(self) -> str:
         return (

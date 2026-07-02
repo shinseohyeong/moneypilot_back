@@ -30,6 +30,13 @@ class BaseLlmClient:
     ) -> Dict:
         raise NotImplementedError
 
+    def generate_text(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+    ) -> str:
+        raise NotImplementedError
+
 
 class OpenAiLlmClient(BaseLlmClient):
     def __init__(self):
@@ -78,6 +85,32 @@ class OpenAiLlmClient(BaseLlmClient):
             raise HTTPException(
                 status_code=502,
                 detail=f"OpenAI 뉴스 요약 호출 중 오류가 발생했습니다: {str(e)}",
+            )
+    
+    def generate_text(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+    ) -> str:
+        """
+        일반 텍스트 답변을 생성합니다.
+
+        주식 챗봇, 소비 챗봇 등에서 공통으로 사용할 수 있습니다.
+        JSON 파싱이 필요한 뉴스 요약과 달리, 자연어 답변 문자열을 그대로 반환합니다.
+        """
+        try:
+            response = self.client.responses.create(
+                model=self.model_name,
+                instructions=system_prompt,
+                input=user_prompt,
+            )
+
+            return response.output_text
+
+        except Exception as e:
+            raise HTTPException(
+                status_code=502,
+                detail=f"OpenAI 텍스트 생성 호출 중 오류가 발생했습니다: {str(e)}",
             )
 
     def _build_prompt(
