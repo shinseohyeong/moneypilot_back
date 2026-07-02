@@ -19,20 +19,14 @@ class DepositProduct(Base):
     # 상품 ID
     id = Column(BigInteger, primary_key=True, autoincrement=True)
 
-    # 금융감독원 코드
+    # 금융감독원 상품 코드
     product_code = Column(String(100), nullable=False, unique=True)
+
     # 금융기관명
     bank_name = Column(String(100), nullable=False)
+
     # 상품명
     product_name = Column(String(200), nullable=False)
-
-    # 기본금리
-    interest_rate = Column(DECIMAL(5, 2), nullable=False)
-    # 우대금리
-    max_rate = Column(DECIMAL(5, 2), nullable=True)
-
-    # 가입 기간 개월 수
-    join_period = Column(Integer, nullable=False)
 
     # 생성일
     created_at = Column(
@@ -41,35 +35,29 @@ class DepositProduct(Base):
         server_default=func.now(),
     )
 
-    # 금융감독원/외부 API 데이터 갱신 시각
+    # API 데이터 갱신 시각
     updated_at = Column(
         DateTime,
+        nullable=False,
         server_default=func.now(),
         onupdate=func.now(),
-        nullable=False,
     )
 
 
 class SavingProduct(Base):
     __tablename__ = "saving_products"
 
-    # 상품 ID
+    # 적금 상품 고유 ID
     id = Column(BigInteger, primary_key=True, autoincrement=True)
 
-    # 금융감독원 코드
+    # 금융감독원 상품 코드
     product_code = Column(String(100), nullable=False, unique=True)
+
     # 금융기관명
     bank_name = Column(String(100), nullable=False)
-    # 상품명
+
+    # 적금 상품명
     product_name = Column(String(200), nullable=False)
-
-    # 기본금리
-    interest_rate = Column(DECIMAL(5, 2), nullable=False)
-    # 우대금리
-    max_rate = Column(DECIMAL(5, 2), nullable=True)
-
-    # 가입 기간 개월 수
-    join_period = Column(Integer, nullable=False)
 
     # 생성일
     created_at = Column(
@@ -78,12 +66,96 @@ class SavingProduct(Base):
         server_default=func.now(),
     )
 
-    # 금융감독원/외부 API 데이터 갱신 시각
+    # API 데이터 갱신 시각
     updated_at = Column(
         DateTime,
+        nullable=False,
         server_default=func.now(),
         onupdate=func.now(),
+    )
+
+
+class DepositProductRate(Base):
+    __tablename__ = "deposit_product_rates"
+
+    # 금리 옵션 ID
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+
+    # 예금 상품 ID
+    product_id = Column(
+        BigInteger,
+        ForeignKey("deposit_products.id"),
         nullable=False,
+    )
+
+    # 가입 기간(개월)
+    term_months = Column(Integer, nullable=False)
+
+    # 기본 금리(%)
+    base_rate = Column(DECIMAL(5, 2), nullable=False)
+
+    # 최고 우대 금리(%)
+    max_rate = Column(DECIMAL(5, 2), nullable=True)
+
+    # 금리 유형: SIMPLE(단리), COMPOUND(복리)
+    rate_type = Column(String(20), nullable=True)
+
+    # 생성일
+    created_at = Column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    # 수정일
+    updated_at = Column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+
+class SavingProductRate(Base):
+    __tablename__ = "saving_product_rates"
+
+    # 금리 옵션 ID
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+
+    # 적금 상품 ID
+    # 명세서에는 FK(deposit_products.id)로 되어 있지만,
+    # saving_product_rates는 적금 금리 테이블이므로 saving_products.id가 맞습니다.
+    product_id = Column(
+        BigInteger,
+        ForeignKey("saving_products.id"),
+        nullable=False,
+    )
+
+    # 가입 기간(개월)
+    term_months = Column(Integer, nullable=False)
+
+    # 기본 금리(%)
+    base_rate = Column(DECIMAL(5, 2), nullable=False)
+
+    # 최고 우대 금리(%)
+    max_rate = Column(DECIMAL(5, 2), nullable=True)
+
+    # 금리 유형: SIMPLE(단리), COMPOUND(복리)
+    rate_type = Column(String(20), nullable=True)
+
+    # 생성일
+    created_at = Column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    # 수정일
+    updated_at = Column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
     )
 
 
@@ -101,26 +173,33 @@ class FinancialProductRecommendation(Base):
     )
 
     # DEPOSIT | SAVING | INSURANCE
-    product_type = Column(String(30), nullable=False)
+    product_type = Column(String(20), nullable=False)
 
     # 추천 상품 ID
     # product_type에 따라 deposit_products.id,
     # saving_products.id,
-    # insurance_products.id 중 하나를 의미함
+    # insurance_products.id 중 하나를 의미합니다.
+    #
+    # 여러 테이블 중 하나를 참조하는 구조라서
+    # 실제 FK는 걸지 않고 product_type + product_id 조합으로 해석합니다.
     product_id = Column(BigInteger, nullable=False)
 
     # 추천 사유
-    recommendation_reason = Column(Text, nullable=True)
+    recommendation_reason = Column(Text, nullable=False)
 
     # 추천 시각
-    created_at = Column(DateTime, server_default=func.now(), nullable=False,)
+    created_at = Column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
+    )
 
     # 수정 시각
     updated_at = Column(
         DateTime,
+        nullable=False,
         server_default=func.now(),
         onupdate=func.now(),
-        nullable=False,
     )
 
 
@@ -132,10 +211,11 @@ class InsuranceProduct(Base):
 
     # 보험사
     company_name = Column(String(100), nullable=False)
+
     # 보험 상품명
     insurance_name = Column(String(200), nullable=False)
 
-    # 보험 종류(실손보험, 암보험, 종신보험 등)
+    # 보험 종류
     insurance_type = Column(String(50), nullable=False)
 
     # 설명
@@ -148,9 +228,10 @@ class InsuranceProduct(Base):
         server_default=func.now(),
     )
 
-    # 외부 API 또는 관리자 데이터 갱신 시각
+    # 갱신일
     updated_at = Column(
         DateTime,
+        nullable=False,
         server_default=func.now(),
         onupdate=func.now(),
     )
@@ -175,25 +256,32 @@ class InterestCalculationHistory(Base):
     # 원금
     principal = Column(BigInteger, nullable=False)
 
-    # 가입 기간 개월 수
+    # 가입 기간
     period_month = Column(Integer, nullable=False)
 
     # 적용 금리
     interest_rate = Column(DECIMAL(5, 2), nullable=False)
 
     # 세전 이자
-    before_tax_amount = Column(BigInteger, nullable=False)
+    before_tax_interest = Column(BigInteger, nullable=False)
+
     # 세후 이자
-    after_tax_amount = Column(BigInteger, nullable=False)
+    after_tax_interest = Column(BigInteger, nullable=False)
+
     # 만기 수령액
     maturity_amount = Column(BigInteger, nullable=False)
 
     # 생성일
-    created_at = Column(DateTime, server_default=func.now(), nullable=False)
+    created_at = Column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
+    )
+
     # 수정일
     updated_at = Column(
         DateTime,
+        nullable=False,
         server_default=func.now(),
         onupdate=func.now(),
-        nullable=False
     )
