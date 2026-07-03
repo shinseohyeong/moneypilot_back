@@ -176,12 +176,8 @@ def _get_or_create_user(db: Session, provider: str, info: dict, social_tokens: d
             email=email,
             password="",  # 소셜 로그인은 비밀번호 없음
             username=info["username"],
-<<<<<<< HEAD
-            login_type=provider.upper(),
-=======
             login_type="OAUTH",
             role="USER",
->>>>>>> 712f18a (fix: OAuth login_type을 OAUTH/BOTH로 수정, role 기본값 추가)
             is_active=True,
         )
         db.add(user)
