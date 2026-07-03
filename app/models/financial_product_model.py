@@ -26,14 +26,6 @@ class DepositProduct(Base):
     # 상품명
     product_name = Column(String(200), nullable=False)
 
-    # 기본금리
-    interest_rate = Column(DECIMAL(5, 2), nullable=False)
-    # 우대금리
-    max_rate = Column(DECIMAL(5, 2), nullable=True)
-
-    # 가입 기간 개월 수
-    join_period = Column(Integer, nullable=False)
-
     # 생성일
     created_at = Column(
         DateTime,
@@ -62,14 +54,6 @@ class SavingProduct(Base):
     bank_name = Column(String(100), nullable=False)
     # 상품명
     product_name = Column(String(200), nullable=False)
-
-    # 기본금리
-    interest_rate = Column(DECIMAL(5, 2), nullable=False)
-    # 우대금리
-    max_rate = Column(DECIMAL(5, 2), nullable=True)
-
-    # 가입 기간 개월 수
-    join_period = Column(Integer, nullable=False)
 
     # 생성일
     created_at = Column(
@@ -196,4 +180,70 @@ class InterestCalculationHistory(Base):
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False
+    )
+
+
+class DepositProductRate(Base):
+    __tablename__ = "deposit_product_rates"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+
+    product_id = Column(
+        BigInteger,
+        ForeignKey("deposit_products.id"),
+        nullable=False,
+    )
+
+    term_months = Column(Integer, nullable=False)
+
+    base_rate = Column(DECIMAL(5, 2), nullable=False)
+
+    max_rate = Column(DECIMAL(5, 2), nullable=True)
+
+    rate_type = Column(String(20), nullable=True)
+
+    created_at = Column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    updated_at = Column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+
+class SavingProductRate(Base):
+    __tablename__ = "saving_product_rates"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+
+    product_id = Column(
+        BigInteger,
+        ForeignKey("saving_products.id"),
+        nullable=False,
+    )
+
+    term_months = Column(Integer, nullable=False)
+
+    base_rate = Column(DECIMAL(5, 2), nullable=False)
+
+    max_rate = Column(DECIMAL(5, 2), nullable=True)
+
+    rate_type = Column(String(20), nullable=True)
+
+    created_at = Column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    updated_at = Column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
     )
