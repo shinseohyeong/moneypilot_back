@@ -1,11 +1,15 @@
 import re
 from pydantic import BaseModel, EmailStr, Field, field_validator
+from typing import Optional
+from datetime import date
 
 
 class SignupRequest(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=8, max_length=128)
     username: str = Field(..., min_length=2, max_length=100)
+    birth_date: Optional[date] = None
+    gender: Optional[str] = None
 
     @field_validator("password")
     @classmethod
