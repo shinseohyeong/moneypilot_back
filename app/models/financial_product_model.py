@@ -284,5 +284,4 @@ class InterestCalculationHistory(Base):
         nullable=False,
         server_default=func.now(),
         onupdate=func.now(),
-        nullable=False
     )
