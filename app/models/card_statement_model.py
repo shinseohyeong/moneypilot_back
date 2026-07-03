@@ -1,47 +1,99 @@
+# ==========================================
+# 파일 위치 :
+# app/models/card_statement_model.py
+# 역할 :
+# card_statements 테이블 ORM 모델
+# ==========================================
 from sqlalchemy import (
-    BigInteger,
     Column,
-    DateTime,
-    ForeignKey,
+    BigInteger,
     String,
     Text,
-    func,
+    TIMESTAMP,
+    ForeignKey
 )
+from sqlalchemy.sql import func
 
 from app.core.database import Base
 
-
+# ==========================================
+# 카드 명세서 파일 테이블
+# ==========================================
 class CardStatement(Base):
     __tablename__ = "card_statements"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    # PK
+    id = Column(
+        BigInteger,
+        primary_key=True,
+        index=True,
+        autoincrement=True
+    )
 
+    # 사용자 ID
     user_id = Column(
         BigInteger,
         ForeignKey("users.id"),
-        nullable=False,
+        nullable=False
     )
 
-    file_name = Column(String(255), nullable=False)
-    file_url = Column(String(500), nullable=False)
-    file_type = Column(String(20), nullable=False)
+    # 파일명
+    # ex) samsung_card.xlsx
+    file_name = Column(
+        String(255),
+        nullable=False
+    )
 
-    # PROCESSING | COMPLETED | FAILED
+    # 저장 경로
+    file_url = Column(
+        String(500),
+        nullable=False
+    )
+
+    # 파일 타입
+    # XLSX / XLS / CSV / PDF
+    file_type = Column(
+        String(20),
+        nullable=False
+    )
+
+    # 처리 상태
+    # PROCESSING
+    # COMPLETED
+    # FAILED
     status = Column(
         String(20),
-        nullable=False,
-        default="PROCESSING",
+        default="PROCESSING"
     )
 
-    error_message = Column(Text, nullable=True)
+    # 카드명
+    # 카드사별 거래내역 분리 목적
+    # ex) 삼성카드, 현대카드
+    card_name = Column(
+        String(20),
+        nullable=False
+    )
 
-    uploaded_at = Column(DateTime, server_default=func.now())
-    processed_at = Column(DateTime, nullable=True)
+    # 에러메세지
+    error_message = Column(
+        Text
+    )
 
-    card_name = Column(String(20), nullable=False)
+    # 업로드 시간
+    uploaded_at = Column(
+        TIMESTAMP,
+        default=func.now()
+    )
 
+    # 처리 완료 시간
+    processed_at = Column(
+        TIMESTAMP,
+        nullable=True
+    )
+    
+    # 수정 시간
     updated_at = Column(
-        DateTime,
-        server_default=func.now(),
-        onupdate=func.now(),
+        TIMESTAMP,
+        default=func.now(),
+        onupdate=func.now()
     )

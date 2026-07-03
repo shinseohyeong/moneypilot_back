@@ -2,14 +2,15 @@ from sqlalchemy import (
     BigInteger,
     Boolean,
     Column,
+    Date,
     DateTime,
     ForeignKey,
     String,
     Text,
+    UniqueConstraint,
     func,
     DECIMAL,
     text,
-    
 )
 from app.core.database import Base
 
@@ -18,33 +19,89 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
+
     email = Column(String(100), nullable=False, unique=True)
+
     password = Column(String(255), nullable=False)
+
     username = Column(String(50), nullable=False)
+
     profile_image_url = Column(String(500), nullable=True)
 
-    login_type = Column(String(20), nullable=False, default="LOCAL")
-    is_active = Column(Boolean, nullable=False, default=True)
+    # LOCAL | OAUTH | BOTH
+    # DB 기본값까지 반영하기 위해 server_default 사용
+    login_type = Column(
+        String(20),
+        nullable=False,
+        server_default=text("'LOCAL'"),
+    )
+
+    # 생년월일
+    birth_date = Column(Date, nullable=True)
+
+    # 성별
+    gender = Column(String(10), nullable=True)
+
+    # 계정 활성화 여부
+    is_active = Column(
+        Boolean,
+        nullable=False,
+        server_default=text("1"),
+    )
+
+    # USER: 일반사용자 / ADMIN: 관리자
+    role = Column(
+        String(20),
+        nullable=False,
+        server_default=text("'USER'"),
+    )
 
     created_at = Column(DateTime, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
+    updated_at = Column(
+        DateTime,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
 
 class OAuthAccount(Base):
     __tablename__ = "oauth_accounts"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    user_id = Column(BigInteger, ForeignKey("users.id"), nullable=False)
+    __table_args__ = (
+        UniqueConstraint(
+            "provider",
+            "provider_user_id",
+            name="uq_oauth_accounts_provider_user_id",
+        ),
+    )
 
-    provider = Column(String(50), nullable=False)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+
+    user_id = Column(
+        BigInteger,
+        ForeignKey("users.id"),
+        nullable=False,
+    )
+
+    provider = Column(String(30), nullable=False)
+
     provider_user_id = Column(String(255), nullable=False)
+
     provider_email = Column(String(255), nullable=False)
+
     access_token = Column(Text, nullable=True)
+
     refresh_token = Column(Text, nullable=True)
+
     token_expires_at = Column(DateTime, nullable=True)
 
     created_at = Column(DateTime, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    updated_at = Column(
+        DateTime,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
 
 
 class RefreshToken(Base):
@@ -86,7 +143,7 @@ class FinanceProfile(Base):
     # 연봉: DECIMAL(15, 2), NOT NULL
     annual_salary = Column(
         DECIMAL(15, 2),
-        nullable=False,
+        nullable=True,
     )
 
     # 사용자가 입력한 월 고정비
