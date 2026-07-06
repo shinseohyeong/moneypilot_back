@@ -53,7 +53,7 @@ def sync_deposit_products(db: Session):
         rate = (
             db.query(DepositProductRate)
             .filter(DepositProductRate.product_id == product.id,
-                    DepositProductRate.term_months == int(option["save_trm"]),
+                    DepositProductRate.term_months == int(option.get("save_trm") or 0),
                     )
             .first()
         )
@@ -61,18 +61,18 @@ def sync_deposit_products(db: Session):
         if rate is None:
             rate = DepositProductRate(
                 product_id=product.id,
-                term_months=int(option["save_trm"]),
-                base_rate=float(option.get["intr_rate"] or 0),
-                max_rate=float(option.get["intr_rate2"] or 0),
-                rate_type=option.get["intr_rate_type_nm"],
+                term_months=int(option.get("save_trm") or 0),
+                base_rate=float(option.get("intr_rate") or 0),
+                max_rate=float(option.get("intr_rate2") or 0),
+                rate_type=option.get("intr_rate_type_nm"),
             )
 
             db.add(rate)
         
         else:
-            rate.base_rate = float(option["intr_rate"] or 0)
-            rate.max_rate = float(option["intr_rate2"] or 0)
-            rate.rate_type = option["intr_rate_type_nm"]
+            rate.base_rate = float(option.get("intr_rate") or 0)
+            rate.max_rate = float(option.get("intr_rate2") or 0)
+            rate.rate_type = option.get("intr_rate_type_nm")
 
     db.commit() # 저장
 
@@ -121,7 +121,7 @@ def sync_saving_products(db: Session):
         rate = (
             db.query(SavingProductRate)
             .filter(SavingProductRate.product_id == product.id,
-                    SavingProductRate.term_months == int(option["save_trm"]),
+                    SavingProductRate.term_months == int(option["save_trm"] or 0),
                     )
             .first()
         )
@@ -129,18 +129,18 @@ def sync_saving_products(db: Session):
         if rate is None:
             rate = SavingProductRate(
                 product_id=product.id,
-                term_months=int(option["save_trm"]),
-                base_rate=float(option["intr_rate"] or 0),
-                max_rate=float(option["intr_rate2"] or 0),
-                rate_type=option["intr_rate_type_nm"],
+                term_months=int(option.get("save_trm") or 0),
+                base_rate=float(option.get("intr_rate") or 0),
+                max_rate=float(option.get("intr_rate2") or 0),
+                rate_type=option.get("intr_rate_type_nm"),
             )
 
             db.add(rate)
         
         else:
-            rate.base_rate = float(option["intr_rate"] or 0)
-            rate.max_rate = float(option["intr_rate2"] or 0)
-            rate.rate_type = option["intr_rate_type_nm"]
+            rate.base_rate = float(option.get("intr_rate") or 0)
+            rate.max_rate = float(option.get("intr_rate2") or 0)
+            rate.rate_type = option.get("intr_rate_type_nm")
 
     db.commit() # 저장
 
