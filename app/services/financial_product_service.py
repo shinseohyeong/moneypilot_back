@@ -62,9 +62,9 @@ def sync_deposit_products(db: Session):
             rate = DepositProductRate(
                 product_id=product.id,
                 term_months=int(option["save_trm"]),
-                base_rate=float(option["intr_rate"] or 0),
-                max_rate=float(option["intr_rate2"] or 0),
-                rate_type=option["intr_rate_type_nm"],
+                base_rate=float(option.get["intr_rate"] or 0),
+                max_rate=float(option.get["intr_rate2"] or 0),
+                rate_type=option.get["intr_rate_type_nm"],
             )
 
             db.add(rate)
