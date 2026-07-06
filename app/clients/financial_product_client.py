@@ -32,7 +32,6 @@ def fetch_saving_products():
         "auth": settings.FINANCE_API_KEY,
         "topFinGrpNo": "020000",
         "pageNo": 1,
-        "financeCd": "0010587",
     }
 
     response = requests.get(
@@ -42,4 +41,6 @@ def fetch_saving_products():
 
     response.raise_for_status()
 
-    return response.json()
+    data = response.json()
+
+    return data
