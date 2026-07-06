@@ -9,7 +9,6 @@ def fetch_deposit_products():
         "auth": settings.FINANCE_API_KEY,
         "topFinGrpNo": "020000",
         "pageNo": "1",
-        "financeCd": "0010587",
     }
 
     # API 호출
@@ -22,7 +21,11 @@ def fetch_deposit_products():
     response.raise_for_status()
 
     # JSON으로 반환
-    return response.json()
+    data = response.json()
+
+    print(data)
+
+    return data
 
 def fetch_saving_products():
     params = {
