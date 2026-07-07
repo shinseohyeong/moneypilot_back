@@ -79,9 +79,9 @@ class Settings:
             f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
             "?charset=utf8mb4"
         )
-
+    
     class Config:
-        env_file = ".env"
+        env_file=".env"
 
 
 settings = Settings()

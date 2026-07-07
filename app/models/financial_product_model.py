@@ -11,6 +11,7 @@ from sqlalchemy import (
 )
 
 from app.core.database import Base
+from sqlalchemy.orm import relationship
 
 
 class DepositProduct(Base):
@@ -43,6 +44,12 @@ class DepositProduct(Base):
         onupdate=func.now(),
     )
 
+    rates = relationship(
+        "DepositProductRate",
+        back_populates="product",
+        cascade="all, delete-orphan",
+    )
+
 
 class SavingProduct(Base):
     __tablename__ = "saving_products"
@@ -72,6 +79,12 @@ class SavingProduct(Base):
         nullable=False,
         server_default=func.now(),
         onupdate=func.now(),
+    )
+
+    rates = relationship(
+        "SavingProductRate",
+        back_populates="product",
+        cascade="all, delete-orphan",
     )
 
 
@@ -115,6 +128,11 @@ class DepositProductRate(Base):
         onupdate=func.now(),
     )
 
+    product = relationship(
+        "DepositProduct",
+        back_populates="rates",
+    )
+
 
 class SavingProductRate(Base):
     __tablename__ = "saving_product_rates"
@@ -156,6 +174,11 @@ class SavingProductRate(Base):
         nullable=False,
         server_default=func.now(),
         onupdate=func.now(),
+    )
+
+    product = relationship(
+        "SavingProduct",
+        back_populates="rates",
     )
 
 
