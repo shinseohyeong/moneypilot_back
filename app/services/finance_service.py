@@ -87,3 +87,69 @@ def update_profile(db: Session, user_id: int, body: FinanceProfileUpdate) -> Fin
 
     logger.info(f"금융 프로필 수정 완료 — user_id={user_id}, fields={list(update_data.keys())}")
     return profile
+
+def get_user_finance_profile(db: Session, user_id: int) -> dict | None:
+    """
+    mp_agent_001 — 에이전트가 유저의 금융 프로필을 조회할 때 사용하는 Tool.
+
+    LangGraph 에이전트가 추천 계산 전 유저의 금융 정보를 가져올 때 호출한다.
+    4번 담당의 recommend_portfolio_tool과 5번 담당의 에이전트 graph.py에서
+    import하여 사용한다.
+
+    Args:
+        db: DB 세션
+        user_id: 조회할 유저 ID
+
+    Returns:
+        dict with monthly_salary, fixed_expense, risk_type,
+              investment_goal, target_saving_amount
+        프로필이 없으면 None
+    """
+    profile = db.query(FinanceProfile).filter(
+        FinanceProfile.user_id == user_id
+    ).first()
+
+    if not profile:
+        return None
+
+    return {
+        "monthly_salary": profile.monthly_salary,
+        "fixed_expense": profile.fixed_expense,
+        "risk_type": profile.risk_type,
+        "investment_goal": profile.investment_goal,
+        "target_saving_amount": profile.target_saving_amount,
+    }
+
+def get_risk_profile(db: Session, user_id: int) -> str | None:
+    """
+    mp_agent_002 — 에이전트가 유저의 위험성향을 빠르게 조회할 때 사용하는 Tool.
+
+    에이전트가 포트폴리오 배분 비율을 결정하기 직전 위험성향만 빠르게 확인할 때 호출한다.
+    finance_profiles 테이블의 risk_type 단일 컬럼만 조회하여 응답 속도를 최소화한다.
+
+    Args:
+        db: DB 세션
+        user_id: 조회할 유저 ID
+
+    Returns:
+        'conservative', 'neutral', 'aggressive' 중 하나
+        프로필이 없으면 None
+    """
+    # risk_type 컬럼만 조회 (속도 최적화)
+    result = db.query(FinanceProfile.risk_type).filter(
+        FinanceProfile.user_id == user_id
+    ).first()
+
+    if not result:
+        return None
+
+    risk_type = result[0]  # 튜플의 첫 번째 값
+
+    # 한글 → 영문 변환 (명세 준수)
+    RISK_TYPE_MAP = {
+        "안정형": "conservative",
+        "중립형": "neutral",
+        "공격형": "aggressive",
+    }
+
+    return RISK_TYPE_MAP.get(risk_type, risk_type)
