@@ -31,8 +31,9 @@ class FileRepository:
         statement:CardStatement
     ):
         self.db.add(statement)
-        self.db.commit()
-        self.db.refresh(statement)
+        # upload_process()에서 한번에 저장해야함. 
+        # 여기서 commit() 해버리면 데이터가 꼬일수 있음.
+        self.db.flush() 
         return statement
 
     # ======================================
@@ -59,11 +60,13 @@ class FileRepository:
     # ======================================
     def find_by_id(
         self,
-        statement_id:int
+        statement_id:int,
+        user_id:int
     ):
         return (
             self.db.query(CardStatement).filter(
-                CardStatement.id == statement_id
+                CardStatement.id == statement_id,
+                CardStatement.user_id == user_id
             ).first()
         )
 
@@ -76,4 +79,3 @@ class FileRepository:
         statement:CardStatement
     ):
         self.db.delete(statement)
-        self.db.commit()

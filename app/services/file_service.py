@@ -16,12 +16,14 @@ from datetime import datetime
 import pandas as pd
 from fastapi import UploadFile
 from sqlalchemy.orm import Session
+import uuid
 
 from app.models import (
     CardStatement,
     Transaction
 )
 from app.services.parser import parse_excel
+from app.services.vision_service import VisionService
 
 UPLOAD_DIR = Path("uploads")
 
@@ -29,6 +31,7 @@ class FileService:
     def __init__(self, db: Session):
         # DB 세션 저장
         self.db = db
+        self.vision_service = VisionService()
     # ===============================
     # 1. 파일 저장
     # 역할:
@@ -46,7 +49,7 @@ class FileService:
             exist_ok=True
         )
         # 저장경로 생성
-        file_path = UPLOAD_DIR / file.filename
+        file_path = (UPLOAD_DIR/ f"{uuid.uuid4()}_{file.filename}")
         # 파일 저장
         with file_path.open("wb") as buffer:
             buffer.write(
@@ -85,6 +88,7 @@ class FileService:
 
             # 여기서 한번만 저장
             self.db.commit()
+            self.db.refresh(statement)
             return statement
 
         except Exception as e:
@@ -180,10 +184,21 @@ class FileService:
 
         else:
             raise Exception(
-                "지원하지 않는 파일 형식"
+                status_code=404,
+                detail="지원하지 않는 파일 형식"
             )
         return df
     
+    # ======================================
+    # Vision 거래내역 추출
+    # ======================================
+    def parse_card_statement(
+        self,
+        file_path: str
+    ):
+        return self.vision_service.extract_transactions(
+            file_path
+        )
     # ======================================
     # 업로드 파일 목록 조회
     # ======================================
@@ -206,13 +221,20 @@ class FileService:
     # ======================================
     def get_file_detail(
         self,
-        statement_id:int
+        statement_id:int,
+        user_id: int
     ):
         statement=(
             self.db.query(CardStatement).filter(
-                CardStatement.id==statement_id
+                CardStatement.id == statement_id,
+                CardStatement.user_id == user_id
+
             ).first()
         )
+        if not statement:
+            raise Exception(status_code=404,
+                detail="파일이 존재하지 않습니다.")
+
         return statement
 
     # ======================================
@@ -224,16 +246,19 @@ class FileService:
     # ======================================
     def delete_file(
         self,
-        statement_id:int
+        statement_id:int,
+        user_id: int
     ):
         statement=(
             self.db.query(CardStatement).filter(
-                CardStatement.id==statement_id
+                CardStatement.id==statement_id,
+                CardStatement.user_id == user_id
             ).first()
         )
         if not statement:
             raise Exception(
-                "파일 없음"
+                status_code=404,
+                detail="파일 없음"
             )
 
         # 실제 파일 삭제
@@ -260,13 +285,19 @@ class FileService:
     # ======================================
     def get_file_status(
         self,
-        statement_id:int
+        statement_id:int,
+        user_id: int
     ):
         statement=(
             self.db.query(CardStatement).filter(
-                CardStatement.id==statement_id
+                CardStatement.id==statement_id,
+                CardStatement.user_id == user_id
             ).first()
         )
+        if not statement:
+            raise Exception(status_code=404,
+                detail="파일이 존재하지 않습니다.")
+
         return {
             "statement_id":statement.id,
             "status":statement.status,

@@ -13,12 +13,14 @@ from fastapi import (
     UploadFile,
     File,
     Depends,
-    Form
+    Form,
+    HTTPException
 )
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.services.file_service import FileService
+from app.core.dependencies import get_current_user
 
 router = APIRouter(
     tags=["Files"]
@@ -39,11 +41,12 @@ UPLOAD_DIR="uploads"
     description="사용자가 업로드한 거래명세서 목록을 조회합니다."
 )
 def file_list(
-    db:Session = Depends(get_db)
+    db:Session = Depends(get_db),
+    current_user = Depends(get_current_user),
 ):
     service = FileService(db)
     return service.get_file_list(
-        user_id=1
+        user_id=current_user.id
     )
 
 # ==========================================
@@ -62,24 +65,35 @@ def file_list(
     summary="파일 업로드",
     description="사용자가 거래명세서 파일을 업로드합니다."
 )
-async def upload_file(
+def upload_file(
     file:UploadFile = File(...),
     card_name:str = Form(...),
-    db:Session = Depends(get_db)
+    db:Session = Depends(get_db),
+    current_user = Depends(get_current_user),
 ):
     service = FileService(db)
+    filename = file.filename.lower()
     # 1. 실제 파일 저장
     file_path = service.save_file(file)
+    # 기존 엑셀 처리
+    if filename.endswith((".xlsx", ".xls")):
+        # 2. 엑셀 읽기
+        df = service.read_excel(file_path)
+        # 3. 거래내역 파싱
+        transactions = service.parse_transactions(df, card_name)
+    # 이미지 비전처리
+    elif filename.endswith((".pdf", ".png", ".jpg", ".jpeg")):
+        transactions = service.parse_card_statement(str(file_path))
+        
+    else:
+        raise HTTPException(
+        status_code=400,
+        detail="지원하지 않는 파일 형식입니다."
+    )
     
-    # 2. 엑셀 읽기
-    df = service.read_excel(file_path)
-    
-    # 3. 거래내역 파싱
-    transactions = service.parse_transactions(df, card_name)
-
     # 4. 명세서 + 거래내역 한번에 저장
     statement = service.upload_process(
-        user_id=1,
+        user_id=current_user.id,
         file_name=file.filename,
         file_url=str(file_path),
         file_type=file.filename.split(".")[-1],
@@ -105,11 +119,13 @@ async def upload_file(
 )
 def get_file(
     statement_id:int,
-    db:Session = Depends(get_db)
+    db:Session = Depends(get_db),
+    current_user = Depends(get_current_user),
 ):
     service = FileService(db)
     result = service.get_file_detail(
-        statement_id
+        statement_id = statement_id,
+        user_id=current_user.id,
     )
     return result
 
@@ -131,11 +147,13 @@ def get_file(
 )
 def delete_file(
     statement_id:int,
-    db:Session = Depends(get_db)
+    db:Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     service = FileService(db)
     service.delete_file(
-        statement_id
+        statement_id = statement_id,
+        user_id=current_user.id,
     )
     return {
         "message":"파일 삭제 완료"
@@ -153,10 +171,12 @@ def delete_file(
 )
 def get_file_status(
     statement_id:int,
-    db:Session = Depends(get_db)
+    db:Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     service = FileService(db)
     result = service.get_file_status(
-        statement_id
+        statement_id=statement_id,
+        user_id=current_user.id,
     )
     return result
