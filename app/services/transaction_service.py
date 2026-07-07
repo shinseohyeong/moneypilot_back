@@ -12,7 +12,6 @@
 from sqlalchemy.orm import Session
 
 from app.models.transaction_model import Transaction
-from app.models.card_statement_model import CardStatement
 from app.repositories.transaction_repository import (
     TransactionRepository
 )
@@ -26,19 +25,21 @@ class TransactionService:
         db:Session
     ):
         self.db=db
+        self.transaction_repo = TransactionRepository(db)
+        self.file_repo = FileRepository(db)
 
     # ======================================
     # 특정 파일 거래내역 조회
     # ======================================
     def get_transactions(
         self,
-        statement_id:int
+        statement_id:int,
+        user_id: int
     ):
-        return (
-            self.db.query(Transaction).filter(
-                Transaction.statement_id==statement_id
-            ).all()
-        )
+        return self.repository.find_all_by_statement(
+        statement_id,
+        user_id
+    )
 
     # ======================================
     # 거래 수정
@@ -46,20 +47,17 @@ class TransactionService:
     def update_transaction(
         self,
         transaction_id:int,
+        user_id: int,
         request
     ):
-        transaction=(
-            self.db.query(Transaction).filter(
-                Transaction.id==transaction_id
-            ).first()
-        )
+        transaction = self.transaction_repo.find_by_id(transaction_id,user_id)
+        
         if not transaction:
             raise Exception(
-                "거래 없음"
+                status_code=400,
+                detail="거래 없음"
             )
-        data=request.dict(
-            exclude_none=True
-        )
+        data=request.model_dump(exclude_none=True)
 
         for key,value in data.items():
             setattr(
@@ -76,16 +74,14 @@ class TransactionService:
     # ======================================
     def delete_transaction(
         self,
-        transaction_id:int
+        transaction_id:int,
+        user_id: int
     ):
-        transaction=(
-            self.db.query(Transaction).filter(
-                Transaction.id==transaction_id
-            ).first()
-        )
+        transaction = self.transaction_repo.find_by_id(transaction_id, user_id)
         if not transaction:
             raise Exception(
-                "거래 없음"
+                status_code=400,
+                detail="거래 없음"
             )
 
         self.db.delete(transaction)
@@ -115,7 +111,7 @@ class TransactionService:
 
         )
 
-        self.db.add(transaction)
+        self.transaction_repo.save(transaction)
         self.db.commit()
         self.db.refresh(transaction)
         return transaction
