@@ -176,7 +176,8 @@ def _get_or_create_user(db: Session, provider: str, info: dict, social_tokens: d
             email=email,
             password="",  # 소셜 로그인은 비밀번호 없음
             username=info["username"],
-            login_type=provider.upper(),
+            login_type="OAUTH",
+            role="USER",
             is_active=True,
         )
         db.add(user)

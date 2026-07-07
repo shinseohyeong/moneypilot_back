@@ -143,7 +143,7 @@ class FinanceProfile(Base):
     # 연봉: DECIMAL(15, 2), NOT NULL
     annual_salary = Column(
         DECIMAL(15, 2),
-        nullable=False,
+        nullable=True,
     )
 
     # 사용자가 입력한 월 고정비

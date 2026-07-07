@@ -310,7 +310,7 @@ class StockAlertService:
         if sector_risk_reason:
             parts.append(f"섹터 참고: {sector_risk_reason}")
 
-        parts.append("본 알림은 투자 권유가 아니며, 뉴스 기반 참고 정보입니다.")
+        parts.append(get_investment_disclaimer())
 
         return " ".join(parts)
 

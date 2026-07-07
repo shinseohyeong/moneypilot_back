@@ -30,6 +30,13 @@ class BaseLlmClient:
     ) -> Dict:
         raise NotImplementedError
 
+    def generate_text(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+    ) -> str:
+        raise NotImplementedError
+
 
 class OpenAiLlmClient(BaseLlmClient):
     def __init__(self):
@@ -78,6 +85,32 @@ class OpenAiLlmClient(BaseLlmClient):
             raise HTTPException(
                 status_code=502,
                 detail=f"OpenAI 뉴스 요약 호출 중 오류가 발생했습니다: {str(e)}",
+            )
+    
+    def generate_text(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+    ) -> str:
+        """
+        일반 텍스트 답변을 생성합니다.
+
+        주식 챗봇, 소비 챗봇 등에서 공통으로 사용할 수 있습니다.
+        JSON 파싱이 필요한 뉴스 요약과 달리, 자연어 답변 문자열을 그대로 반환합니다.
+        """
+        try:
+            response = self.client.responses.create(
+                model=self.model_name,
+                instructions=system_prompt,
+                input=user_prompt,
+            )
+
+            return response.output_text
+
+        except Exception as e:
+            raise HTTPException(
+                status_code=502,
+                detail=f"OpenAI 텍스트 생성 호출 중 오류가 발생했습니다: {str(e)}",
             )
 
     def _build_prompt(
@@ -169,9 +202,6 @@ class OpenAiLlmClient(BaseLlmClient):
 class OllamaLlmClient(BaseLlmClient):
     """
     나중에 Ollama 테스트용으로 확장할 자리입니다.
-
-    지금은 OpenAI부터 안정화하고,
-    이후 LLM_PROVIDER=ollama일 때 이 클래스를 구현하면 됩니다.
     """
 
     def __init__(self):
@@ -188,12 +218,22 @@ class OllamaLlmClient(BaseLlmClient):
             detail="Ollama LLM client는 아직 구현되지 않았습니다.",
         )
 
+    def generate_text(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+    ) -> str:
+        raise HTTPException(
+            status_code=501,
+            detail="Ollama 텍스트 생성 기능은 아직 구현되지 않았습니다.",
+        )
+
 
 def get_llm_client() -> BaseLlmClient:
     """
     .env의 LLM_PROVIDER 값에 따라 LLM client를 선택합니다.
     """
-    provider = settings.llm_provider.lower()
+    provider = (settings.llm_provider or "openai").lower()
 
     if provider == "openai":
         return OpenAiLlmClient()
@@ -204,4 +244,21 @@ def get_llm_client() -> BaseLlmClient:
     raise HTTPException(
         status_code=500,
         detail=f"지원하지 않는 LLM_PROVIDER입니다: {settings.llm_provider}",
+    )
+
+
+def generate_text(
+    system_prompt: str,
+    user_prompt: str,
+) -> str:
+    """
+    일반 텍스트 생성을 위한 편의 함수입니다.
+
+    service 계층에서는 OpenAI/Ollama 구현체를 직접 알 필요 없이
+    이 함수만 호출할 수 있습니다.
+    """
+    llm_client = get_llm_client()
+    return llm_client.generate_text(
+        system_prompt=system_prompt,
+        user_prompt=user_prompt,
     )
