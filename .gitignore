@@ -193,6 +193,6 @@ pnpm-debug.log*
 CLAUDE.md
 
 # ==========================================
-# RAG
+# RAG / vectordb / chromadb
 # ==========================================
 chroma_db/
