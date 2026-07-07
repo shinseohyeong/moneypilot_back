@@ -13,6 +13,11 @@ from app.routers import spending_router
 from app.routers import stock_router
 from app.routers import transaction_router
 from app.routers import user_router
+from app.routers import stock_rag_router
+from app.routers import youtube_router
+
+from app.routers.finance_profile_router import router as finance_profile_router
+from app.routers.news_admin_router import router as news_admin_router
 
 
 app = FastAPI(
@@ -20,6 +25,8 @@ app = FastAPI(
     description="MoneyPilot FastAPI Backend",
     version="1.0.0",
 )
+
+app.include_router(finance_profile_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -43,8 +50,11 @@ app.include_router(chatbot_router.router, prefix="/api/chatbot", tags=["Chatbot"
 app.include_router(file_router.router, prefix="/api/files", tags=["Files"])
 app.include_router(finance_router.router, prefix="/api/finance", tags=["Finance"])
 app.include_router(financial_product_router.router, prefix="/api/financial-products", tags=["Financial Products"])
-app.include_router(news_router.router, prefix="/api/news", tags=["News"])
+app.include_router(news_router.router)
+app.include_router(news_admin_router)
 app.include_router(spending_router.router, prefix="/api/spending", tags=["Spending"])
-app.include_router(stock_router.router, prefix="/api/stocks", tags=["Stocks"])
+app.include_router(stock_router.router)
 app.include_router(transaction_router.router, prefix="/api/transactions", tags=["Transactions"])
 app.include_router(user_router.router, prefix="/api/users",  tags=["Users"])
+app.include_router(stock_rag_router.router, prefix="/api/rag", tags=["RAG"],)
+app.include_router(youtube_router.router, prefix="/api/youtube", tags=["YouTube"],)
