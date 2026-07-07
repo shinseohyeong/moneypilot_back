@@ -196,3 +196,7 @@ CLAUDE.md
 # RAG / vectordb / chromadb
 # ==========================================
 chroma_db/
+
+
+# RAG / Chroma local vector store
+storage/vectorstores/
