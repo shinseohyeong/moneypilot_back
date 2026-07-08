@@ -13,9 +13,14 @@ from sqlalchemy.orm import Session
 from app.models.user_model import FinanceProfile
 from app.schemas.finance_profile import FinanceProfileCreate, FinanceProfileUpdate
 
+from app.rag.rag_service import RagService
+from app.rag.builders.finance_profile_builder import build_finance_profile_documents
+
 logger = logging.getLogger(__name__)
 
 MONTHS_PER_YEAR = 12
+
+rag_service = RagService()
 
 
 def _get_profile_or_404(db: Session, user_id: int) -> FinanceProfile:
@@ -62,8 +67,14 @@ def create_profile(db: Session, user_id: int, body: FinanceProfileCreate) -> Fin
     db.refresh(profile)
     logger.info(f"금융 프로필 등록 완료 — user_id={user_id}")
 
+    # mp_rag_001 — 금융 프로필 RAG 저장
+    try:
+        documents = build_finance_profile_documents(profile)
+        rag_service.upsert_documents(documents)
+        logger.info(f"금융 프로필 RAG 저장 완료 — user_id={user_id}")
+    except Exception as e:
+        logger.error(f"금융 프로필 RAG 저장 실패 — user_id={user_id}: {e}")
 
-    logger.info(f"금융 프로필 등록 완료 — user_id={user_id}, investment_type={body.investment_type}")
     return profile
 
 
@@ -86,6 +97,15 @@ def update_profile(db: Session, user_id: int, body: FinanceProfileUpdate) -> Fin
     db.refresh(profile)
 
     logger.info(f"금융 프로필 수정 완료 — user_id={user_id}, fields={list(update_data.keys())}")
+
+    # mp_rag_001 — 수정 시 RAG 재저장 (upsert라 덮어씀)
+    try:
+        documents = build_finance_profile_documents(profile)
+        rag_service.upsert_documents(documents)
+        logger.info(f"금융 프로필 RAG 재저장 완료 — user_id={user_id}")
+    except Exception as e:
+        logger.error(f"금융 프로필 RAG 재저장 실패 — user_id={user_id}: {e}")
+
     return profile
 
 def get_user_finance_profile(db: Session, user_id: int) -> dict | None:
