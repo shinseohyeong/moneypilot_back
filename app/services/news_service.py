@@ -58,12 +58,14 @@ class NewsService:
         search_query = normalized_query or "경제"
 
         try:
-            raw_items = self.client.search_news(
+            naver_response = self.client.search_news(
                 query=search_query,
                 display=display,
                 start=1,
                 sort=sort,
             )
+
+            raw_items = naver_response.get("items", [])
 
             saved_items = []
             response_items = []
@@ -133,12 +135,14 @@ class NewsService:
         search_query = normalized_query or f"{stock.stock_name} 주식"
 
         try:
-            raw_items = self.client.search_news(
+            naver_response = self.client.search_news(
                 query=search_query,
                 display=display,
                 start=1,
                 sort=sort,
             )
+
+            raw_items = naver_response.get("items", [])
 
             saved_items = []
             response_items = []
