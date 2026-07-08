@@ -200,21 +200,49 @@ class NewsService:
     # ------------------------------------------------------------
     # 뉴스 조회
     # ------------------------------------------------------------
-    def get_economy_news(self, limit: int = 20) -> Dict:
+    def get_economy_news(
+        self,
+        limit: int = 20,
+        sort: str = "latest",
+    ) -> Dict:
         """
         저장된 경제/일반 뉴스 조회
+
+        sort:
+        - latest: 최신순
+        - oldest: 오래된순
+        - relevance: 현재 경제 뉴스에서는 latest와 동일하게 처리
+        - default: 기본순, 현재 latest와 동일하게 처리
         """
-        items = self.repository.list_economy_news(limit=limit)
+        normalized_sort = self._normalize_news_sort(sort)
+
+        items = self.repository.list_economy_news(
+            limit=limit,
+            sort=normalized_sort,
+        )
 
         return {
             "total_count": len(items),
             "items": [self._to_article_response(item) for item in items],
         }
 
-    def get_stock_news(self, stock_id: int, limit: int = 20) -> Dict:
+    def get_stock_news(
+        self,
+        stock_id: int,
+        limit: int = 20,
+        sort: str = "latest",
+    ) -> Dict:
         """
         저장된 특정 종목 뉴스 조회
+
+        sort:
+        - latest: 최신순
+        - oldest: 오래된순
+        - relevance: 종목명 포함 여부 기준 관련도순
+        - default: 기본순, 현재 latest와 동일하게 처리
         """
+        normalized_sort = self._normalize_news_sort(sort)
+
         stock = self.repository.get_stock_by_id(stock_id)
 
         if not stock:
@@ -226,6 +254,8 @@ class NewsService:
         rows = self.repository.list_stock_news(
             stock_id=stock_id,
             limit=limit,
+            sort=normalized_sort,
+            stock_name=stock.stock_name,
         )
 
         items = []
@@ -426,5 +456,29 @@ class NewsService:
 
         if cleaned.lower() in ("null", "none", "undefined", "string"):
             return None
+
+        return cleaned
+    
+    def _normalize_news_sort(self, sort: Optional[str]) -> str:
+        """
+        뉴스 조회 정렬값을 안전하게 정규화합니다.
+
+        허용값:
+        - default
+        - latest
+        - oldest
+        - relevance
+
+        잘못된 값이 들어오면 latest로 처리합니다.
+        """
+        allowed_sorts = {"default", "latest", "oldest", "relevance"}
+
+        if not sort:
+            return "latest"
+
+        cleaned = sort.strip().lower()
+
+        if cleaned not in allowed_sorts:
+            return "latest"
 
         return cleaned
