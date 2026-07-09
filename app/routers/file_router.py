@@ -100,11 +100,12 @@ def upload_file(
         card_name=card_name,
         transactions=transactions
     )
+
     return {
-        "message":"파일 업로드 완료",
-        "statement_id":statement.id,
-        "file_name":file.filename,
-        "status":statement.status
+        "message": "파일 업로드 완료",
+        "statement_id": statement.id,
+        "file_name": file.filename,
+        "status": statement.status
     }
 
 # ==========================================

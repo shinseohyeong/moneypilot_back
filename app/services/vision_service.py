@@ -4,7 +4,7 @@
 # Vision Parser 호출
 # Vision 결과 후처리
 # ==========================================
-from parsers.vision_parser import parse_card_statement
+from parsers.vision_parser import vision_parser
 
 class VisionService:
     # ======================================
@@ -14,7 +14,7 @@ class VisionService:
         self,
         file_path: str
     ):
-        transactions = parse_card_statement(file_path)
+        transactions = vision_parser(file_path)
         # 나중에 후처리 필요하면 여기서
         # 날짜 형식 변환
         # amount int 변환

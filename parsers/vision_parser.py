@@ -8,6 +8,7 @@ import json
 import base64
 from pathlib import Path
 import os
+from fastapi import HTTPException
 
 client = OpenAI()
 
@@ -43,22 +44,25 @@ def make_file_content(file_path: str) -> dict:
 # ==========================================
 # Vision으로 카드 거래명세서 파싱
 # ==========================================
-def parse_card_statement(file_path: str):
+def vision_parser(file_path: str):
     prompt = """
     이 파일은 카드 거래명세서입니다.
     모든 거래내역을 아래 JSON 배열 형식으로 반환하세요.
     [
       {
-        "transaction_date":"",
-        "merchant_name":"",
-        "amount":0,
-        "installment":""
+        "transaction_date": "2026-01-10",
+        "month": "2026-01",
+        "merchant_name": "",
+        "amount": 0,
+        "description": "일시불"
       }
     ]
     
     누락된 거래가 있더라도 임의로 생성하지 마세요.
     금액은 숫자만 반환하세요.
-    날짜는 YYYY-MM-DD 형식으로 반환하세요.
+    transaction_date는 YYYY-MM-DD 형식으로 반환하세요.
+    month는 YYYY-MM 형식으로 반드시 반환하세요.
+    description에는 일시불, 3개월, 12개월 등의 결제 방식을 넣어주세요.
     JSON 외에는 아무 것도 출력하지 마세요.
     
     반드시 JSON 배열만 출력하세요.
@@ -91,5 +95,7 @@ def parse_card_statement(file_path: str):
         return json.loads(result)
 
     except json.JSONDecodeError:
-        raise ValueError(status_code=400,
-                detail="Vision 응답을 JSON으로 변환하지 못했습니다.")
+        raise HTTPException(
+        status_code=400,
+        detail="Vision 응답을 JSON으로 변환하지 못했습니다."
+    )
