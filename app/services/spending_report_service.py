@@ -10,8 +10,6 @@ from app.repositories.spending_report_repository import AnalysisReportRepository
 from app.services.spending_llm_service import SpendingLLMService
 from app.services.spending_analysis_service import SpendingService
 from app.services.spending_analysis_service import SpendingAnalysisService
-from app.rag.rag_service import RagService
-from app.rag.builders.spending_report_builder import build_spending_report_documents
 
 
 class AnalysisReportService:
@@ -41,9 +39,6 @@ class AnalysisReportService:
     self.spending_service = SpendingService(db)
     self.spending_analysis_service = SpendingAnalysisService(db)
     
-    # RAG 저장/검색용 Service
-    self.rag_service = RagService()
-    
   
   def generate_monthly_report(
     self,
@@ -59,9 +54,8 @@ class AnalysisReportService:
     4. 기존 카드별 사용금액 데이터 조회 함수 재사용
     5. LLM에 전달할 report_context 생성
     6. LLM을 호출해 소비 코칭 리포트 생성
-    7. RAG 저장
-    8. analysis_reports 테이블에 저장하거나 기존 리포트 수정
-    9. 저장된 리포트 반환
+    7. analysis_reports 테이블에 저장하거나 기존 리포트 수정
+    8. 저장된 리포트 반환
     """
     
     self.spending_analysis_service.validate_month_format(month)
@@ -111,14 +105,6 @@ class AnalysisReportService:
       recommendation_text=llm_result.get("recommendation_text"),
       agent_response=llm_result.get("agent_response"),
     )
-    try:
-      # 7. 저장된 리포트를 RAG 문서로 변환
-      rag_documents = build_spending_report_documents(report)
-      
-      # 8. Chroma에 RAG 문서 저장 또는 갱신
-      self.rag_service.upsert_documents(rag_documents)
-    except Exception as e:
-      print(f"RAG 저장 실패: {e}")
     
     return report
 
