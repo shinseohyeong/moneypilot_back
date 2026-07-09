@@ -97,3 +97,37 @@ class TransactionRepository:
     ):
         self.db.delete(transaction)
         self.db.commit()
+     
+    # ======================================
+    # 월별 조회
+    # ======================================   
+    def find_all_by_month(
+        self,
+        user_id: int,
+        month: str
+    ):
+        return (
+            self.db.query(Transaction)
+            .filter(
+                Transaction.user_id == user_id,
+                Transaction.month == month
+            )
+            .order_by(Transaction.transaction_date)
+            .all()
+        )
+        
+    # 날자별 조회
+    def find_all_by_date(
+        self,
+        user_id: int,
+        transaction_date
+    ):
+        return (
+            self.db.query(Transaction)
+            .filter(
+                Transaction.user_id == user_id,
+                Transaction.transaction_date == transaction_date
+            )
+            .order_by(Transaction.amount)
+            .all()
+        )

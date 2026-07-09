@@ -26,18 +26,32 @@ class TransactionService:
         db:Session
     ):
         self.db=db
+        self.repository = TransactionRepository(db)
 
     # ======================================
-    # 특정 파일 거래내역 조회
+    # 월별 거래내역 조회
     # ======================================
     def get_transactions(
         self,
-        statement_id:int
+        user_id: int,
+        month: str
     ):
-        return (
-            self.db.query(Transaction).filter(
-                Transaction.statement_id==statement_id
-            ).all()
+        return self.repository.find_all_by_month(
+        user_id,
+        month
+    )
+        
+    # ======================================
+    # 날짜별 거래 조회
+    # ======================================
+    def get_transactions_by_date(
+        self,
+        user_id: int,
+        date
+    ):
+        return self.repository.find_all_by_date(
+            user_id,
+            date
         )
 
     # ======================================
