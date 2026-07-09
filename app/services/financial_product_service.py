@@ -1,15 +1,26 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from app.models.financial_product_model import DepositProduct, DepositProductRate, SavingProduct, SavingProductRate, InsuranceProduct
 from app.clients.financial_product_client import fetch_deposit_products, fetch_saving_products
 
 def get_deposit_products(db: Session):
-    return db.query(DepositProduct).all()
+    return (
+        db.query(DepositProduct)
+        .options(selectinload(DepositProduct.rates))
+        .all()
+    )
 
 def get_saving_products(db: Session):
-    return db.query(SavingProduct).all()
+    return (
+        db.query(SavingProduct)
+        .options(selectinload(SavingProduct.rates))
+        .all()
+    )
 
 def get_insurance_products(db: Session):
-    return db.query(InsuranceProduct).all()
+    return (
+        db.query(InsuranceProduct)
+        .all()
+    )
 
 
 def sync_deposit_products(db: Session):
