@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.services.file_service import FileService
+from app.core.dependencies import get_current_user
 
 router = APIRouter(
     tags=["Files"]
@@ -39,13 +40,13 @@ UPLOAD_DIR="uploads"
     description="사용자가 업로드한 거래명세서 목록을 조회합니다."
 )
 def file_list(
-    db:Session = Depends(get_db)
+    db:Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     service = FileService(db)
     return service.get_file_list(
-        user_id=1
+        user_id=current_user.id
     )
-
 # ==========================================
 # 파일 업로드
 # POST
