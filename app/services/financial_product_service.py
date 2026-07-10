@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.models.financial_product_model import DepositProduct, DepositProductRate, SavingProduct, SavingProductRate, InsuranceProduct
 from app.clients.financial_product_client import fetch_deposit_products, fetch_saving_products
 from app.repositories.financial_product_repository import (
-    get_deposit_products, get_saving_products
+    get_deposit_products, get_saving_products, get_insurance_products
 )
 
 
