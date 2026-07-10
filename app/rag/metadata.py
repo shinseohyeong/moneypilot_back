@@ -10,6 +10,7 @@ class RagDomain:
     PRODUCT = "product"
     STOCK_NEWS = "stock_news"
     POLICY = "policy"
+    AGENT_CHAT = "agent_chat"
 
 
 class RagSourceType:
@@ -18,8 +19,11 @@ class RagSourceType:
     PRODUCT = "product"
     NEWS = "news"
     DISCLAIMER = "disclaimer"
+    CHAT_TURN = "chat_turn"
+    CHAT_SUMMARY = "chat_summary"
 
 
 class RagCreatedBy:
     SYSTEM = "system"
     USER = "user"
+    AGENT = "agent"

@@ -1,5 +1,3 @@
-# app/rag/rag_service.py
-
 from typing import Any
 
 from app.rag.chunkers import chunk_text
@@ -7,7 +5,7 @@ from app.rag.embeddings import embed_texts, embed_text
 from app.rag.vector_store import get_rag_collection
 
 
-async def upsert_rag_document(
+def upsert_rag_document(
     user_id: int | None,
     domain: str,
     source_type: str,
@@ -30,6 +28,15 @@ async def upsert_rag_document(
         base_metadata.update(metadata)
 
     chunks = chunk_text(content)
+
+    if not chunks:
+        return {
+            "success": False,
+            "document_key": document_key,
+            "chunk_count": 0,
+            "message": "저장할 RAG 문서 내용이 없습니다.",
+        }
+
     embeddings = embed_texts(chunks)
 
     ids = [
@@ -60,7 +67,7 @@ async def upsert_rag_document(
     }
 
 
-async def search_rag_documents(
+def search_rag_documents(
     query: str,
     user_id: int | None = None,
     domain: str | None = None,
@@ -90,7 +97,11 @@ async def search_rag_documents(
     result_metadatas = results.get("metadatas", [[]])[0]
     result_distances = results.get("distances", [[]])[0]
 
-    for doc, metadata, distance in zip(result_docs, result_metadatas, result_distances):
+    for doc, metadata, distance in zip(
+        result_docs,
+        result_metadatas,
+        result_distances,
+    ):
         documents.append(
             {
                 "content": doc,
@@ -106,7 +117,7 @@ async def search_rag_documents(
     }
 
 
-async def delete_rag_document_by_key(document_key: str) -> dict[str, Any]:
+def delete_rag_document_by_key(document_key: str) -> dict[str, Any]:
     collection = get_rag_collection()
 
     collection.delete(
@@ -120,7 +131,7 @@ async def delete_rag_document_by_key(document_key: str) -> dict[str, Any]:
     }
 
 
-async def delete_rag_documents_by_user(user_id: int) -> dict[str, Any]:
+def delete_rag_documents_by_user(user_id: int) -> dict[str, Any]:
     collection = get_rag_collection()
 
     collection.delete(
