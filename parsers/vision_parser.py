@@ -68,7 +68,7 @@ def make_file_content(file_path: str):
         return {
             "type": "input_file",
             "filename": Path(file_path).name,
-            "file_data": file_base64
+            "file_data": f"data:application/pdf;base64,{file_base64}"
         }
 
     raise HTTPException(
@@ -84,7 +84,7 @@ def vision_parser(file_path: str):
         response = client.responses.create(
             model=os.getenv(
                 "OPENAI_MODEL",
-                "gpt-4.1"
+                "gpt-4o"
             ),
             input=[
                 {
