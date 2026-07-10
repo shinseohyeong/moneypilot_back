@@ -36,7 +36,7 @@ class TransactionService:
         user_id: int,
         month: str
     ):
-        return self.repository.find_all_by_month(
+        return self.transaction_repo.find_all_by_month(
         user_id,
         month
     )
@@ -49,7 +49,7 @@ class TransactionService:
         user_id: int,
         date
     ):
-        return self.repository.find_all_by_date(
+        return self.transaction_repo.find_all_by_date(
             user_id,
             date
         )
