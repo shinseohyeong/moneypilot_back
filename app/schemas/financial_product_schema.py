@@ -27,7 +27,9 @@ class DepositRecommendResponse(BaseModel):
     bank_name: str
     product_name: str
     max_rate: float
-    score: float
+    principal: int
+    expected_interest: int
+    maturity_amount: int
 
 
 class SavingRateResponse(BaseModel):
@@ -56,4 +58,6 @@ class SavingRecommendResponse(BaseModel):
     bank_name: str
     product_name: str
     max_rate: float
-    score: float
+    principal: int
+    expected_interest: int
+    maturity_amount: int

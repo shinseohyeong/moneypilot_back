@@ -34,7 +34,7 @@ def get_deposit_products(
             if product.rates:
                 result.append(product)
 
-        product = result
+        products = result
     
     if sort == "max_rate":
         products.sort(
@@ -83,7 +83,7 @@ def get_saving_products(
             if product.rates:
                 result.append(product)
 
-        product = result
+        products = result
     
     if sort == "max_rate":
         products.sort(
@@ -244,6 +244,7 @@ def sync_saving_products(db: Session):
 def recommend_deposit_products(
     db: Session,
     term: int,
+    deposit_amount: int,
     limit: int = 5,
     preferred_bank: str | None = None
 ):
@@ -265,19 +266,33 @@ def recommend_deposit_products(
         if not rates:
             continue
 
-        max_rate = max(rate.max_rate for rate in rates)
+        max_rate = float(max(rate.max_rate for rate in rates))
 
         # 추천 점수 계산
         score = max_rate
 
         # 선호은행 가산점
         if preferred_bank and product.bank_name == preferred_bank:
-            score += 1
+            score += 0.1
+
+        principal = deposit_amount
+        expected_interest = (
+            principal
+            * (max_rate / 100)
+            * (term / 12)
+        )
+        maturity_amount = principal + expected_interest
 
         recommend_list.append({
+            "id": product.id,
+            "bank_name": product.bank_name,
             "product": product,
+            "product_name": product.product_name,
             "score": score,
             "max_rate": max_rate,
+            "principal": principal,
+            "expected_interest": int(expected_interest),
+            "maturity_amount": int(maturity_amount),
         })
 
     # 점수 순 정렬
@@ -286,13 +301,27 @@ def recommend_deposit_products(
         reverse=True,
     )
 
-    # 상품만 반환
-    return [item["product"] for item in recommend_list[:limit]]
+    result = []
+
+    for item in recommend_list[:limit]:
+        product = item["product"]
+
+        result.append({
+            "id": product.id,
+            "bank_name": product.bank_name,
+            "product_name": product.product_name,
+            "max_rate": item["max_rate"],
+            "principal": item["principal"],
+            "expected_interest": item["expected_interest"],
+            "maturity_amount": item["maturity_amount"],
+        })
+    return result
 
 
 def recommend_saving_products(
     db: Session,
     term: int,
+    monthly_amount: int,    # 매월 저축 금액
     limit: int = 5,
     preferred_bank: str | None = None
 ):
@@ -314,19 +343,34 @@ def recommend_saving_products(
         if not rates:
             continue
 
-        max_rate = max(rate.max_rate for rate in rates)
+        max_rate = float(max(rate.max_rate for rate in rates))
 
         # 추천 점수 계산
         score = max_rate
 
         # 선호은행 가산점
         if preferred_bank and product.bank_name == preferred_bank:
-            score += 1
+            score += 0.1
+
+        principal = monthly_amount * term
+        expected_interest = (
+            monthly_amount
+            * (max_rate / 100)
+            * (term + 1)
+            / 24
+        )
+        maturity_amount = principal + expected_interest
 
         recommend_list.append({
+            "id": product.id,
+            "bank_name": product.bank_name,
+            "product_name": product.product_name,
             "product": product,
             "score": score,
             "max_rate": max_rate,
+            "principal": principal,
+            "expected_interest": int(expected_interest),
+            "maturity_amount": int(maturity_amount),
         })
 
     # 점수 순 정렬
@@ -335,5 +379,18 @@ def recommend_saving_products(
         reverse=True,
     )
 
-    # 상품만 반환
-    return [item["product"] for item in recommend_list[:limit]]
+    result = []
+
+    for item in recommend_list[:limit]:
+        product = item["product"]
+
+        result.append({
+            "id": product.id,
+            "bank_name": product.bank_name,
+            "product_name": product.product_name,
+            "max_rate": item["max_rate"],
+            "principal": item["principal"],
+            "expected_interest": item["expected_interest"],
+            "maturity_amount": item["maturity_amount"],
+        })
+    return result
