@@ -7,76 +7,130 @@
 # 3. 이용한도 조절
 # ==========================================
 from datetime import date
-from sqlalchemy import func
+import psutil
 
-from app.models.user_model import User
-from app.models.admin_model import TokenUsageLog
-
-from app.schemas.admin_schema import TokenUsageLogResponse, TokenLimitSettingResponse
 from app.repositories.admin_repository import AdminRepository
     
 class AdminService:
   def __init__(self, db):
-    self.db = db
     self.repository = AdminRepository(db)
     
   # ==========================================
   # 관리자 대시보드
   # ==========================================
   def get_dashboard(self):
-    return {
-        "total_users": self.repository.count_users(),
-        "today_tokens": self.repository.get_today_token_sum(),
-        "today_cost": float(self.repository.get_today_cost()),
-        "monthly_cost": float(self.repository.get_total_cost()),
-    }
-  
+      total_users = self.repository.count_users()
+      today_tokens = self.repository.get_today_token_sum()
+      today_cost = self.repository.get_today_cost()
+      monthly_cost = self.repository.get_monthly_cost()
+      total_cost = self.repository.get_total_cost()
+      statement_count = self.repository.count_statements()
+      completed = self.repository.count_completed_statements()
+      today_transaction = self.repository.count_today_transactions()
+      month_transaction = self.repository.count_month_transactions()
+      ocr_success_rate = 0
+
+      if statement_count > 0:
+          ocr_success_rate = round(
+              completed / statement_count * 100,
+              2,
+          )
+
+      return {
+          "total_users": total_users,
+          "today_tokens": int(today_tokens),
+          "today_cost": float(today_cost),
+          "monthly_cost": float(monthly_cost),
+          "total_cost": float(total_cost),
+          "statement_count": statement_count,
+          "ocr_success_rate": ocr_success_rate,
+          "today_transaction": today_transaction,
+          "month_transaction": month_transaction,
+      }
+
   # ==========================================
-  # 사용자 사용량 조회
-  # 역할 : 사용자가 사용한 토큰량과 금액을 조회
-  # return:
-  # 사용자 이름과 사용량, 비용 정보
+  # 사용자별 토큰 사용량
   # ==========================================
-  def get_usage_list(self):
-    # DB에서 모든 사용량 로그 조회
-    usage_logs = (self.repository.get_usage_list())
-    # Pydantic 모델로 변환하여 반환
-    return [TokenUsageLogResponse.model_validate(log) for log in usage_logs]
-  
+  def get_user_token_usage(self):
+      rows = self.repository.get_user_token_usage()
+      result = []
+      for row in rows:
+          result.append({
+              "user_id": row[0],
+              "username": row[1],
+              "total_tokens": int(row[2] or 0),
+              "estimated_cost": float(row[3] or 0),
+          })
+
+      return result
+
   # ==========================================
-  # 특정 사용자 사용량 조회
-  # 역할 : 특정 사용자가 사용한 토큰량과 금액을 조회
-  # return:
-  # 사용자 이름과 사용량, 비용 정보
+  # 기능별 토큰 사용량
   # ==========================================
-  def token_usage(self, user_id: int):
-    # DB에서 특정 사용자의 사용량 로그 조회
-    usage_logs = self.repository.get_user_usage(user_id)
-    # Pydantic 모델로 변환하여 반환
-    return [TokenUsageLogResponse.model_validate(log) for log in usage_logs]
-  
+  def get_feature_token_usage(self):
+      rows = self.repository.get_feature_token_usage()
+      result = []
+      for row in rows:
+          result.append({
+              "feature_type": row[0],
+              "total_tokens": int(row[1] or 0),
+              "estimated_cost": float(row[2] or 0),
+          })
+
+      return result
+
   # ==========================================
-  # 사용자 사용량 제한
-  # 역할 : 하루 사용량 제한 설정
-  # return:
-  # 현재 하루 사용량 제한 범위
+  # 일별 비용
+  # ==========================================
+  def get_daily_cost(self):
+      rows = self.repository.get_daily_cost()
+      result = []
+      for row in rows:
+          result.append({
+              "date": row[0],
+              "cost": float(row[1] or 0),
+          })
+
+      return result
+
+  # ==========================================
+  # 토큰 제한 조회
   # ==========================================
   def get_token_limit(self):
-    # DB에서 사용량 제한 설정 조회
-    limit_setting = self.repository.get_token_limit()
-    if limit_setting:
-      return TokenLimitSettingResponse.model_validate(limit_setting)
-    else:
-      return None
+      setting = self.repository.get_token_limit()
+      if setting is None:
+          return {
+              "daily_token_limit": 0,
+              "is_active": False,
+          }
+
+      return {
+          "daily_token_limit": setting.daily_token_limit,
+          "is_active": setting.is_active,
+      }
+
+  # ==========================================
+  # 토큰 제한 수정
+  # ==========================================
+  def update_token_limit(self, limit):
+      setting = self.repository.update_token_limit(limit)
+      return {
+          "daily_token_limit": setting.daily_token_limit,
+          "is_active": setting.is_active,
+      }
+
+  # ==========================================
+  # 금융상품 마지막 갱신 시각
+  # ==========================================
+  def get_financial_product_last_update(self):
+      return self.repository.get_financial_product_last_update()
     
   # ==========================================
-  # 사용자 사용량 변경
-  # 역할 : 하루 사용량 제한 설정 변경
-  # return:
-  # 변경된 하루 사용량 제한 범위
+  # 시스템 사용량
   # ==========================================
-  def update_token_limit(self, daily_token_limit: int):
-    limit = self.repository.update_token_limit(daily_token_limit)
-    self.db.commit()
-    self.db.refresh(limit)
-    return TokenLimitSettingResponse.model_validate(limit)
+  def get_system_status(self):
+
+      return {
+          "cpu_usage": psutil.cpu_percent(interval=1),
+          "ram_usage": psutil.virtual_memory().percent,
+      }

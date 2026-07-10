@@ -48,7 +48,6 @@ def file_list(
     return service.get_file_list(
         user_id=current_user.id
     )
-
 # ==========================================
 # 파일 업로드
 # POST
