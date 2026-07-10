@@ -26,32 +26,6 @@ router = APIRouter(
     tags=["Files"]
 )
 
-<<<<<<< HEAD
-=======
-# 파일 저장 위치
-UPLOAD_DIR="uploads"
-
-# ==========================================
-# 업로드 파일 목록 조회
-# GET
-# /api/files
-# card_statements 테이블 조회
-# ==========================================
-@router.get(
-    "",
-    summary="파일 목록 조회",
-    description="사용자가 업로드한 거래명세서 목록을 조회합니다."
-)
-def file_list(
-    db:Session = Depends(get_db),
-    current_user = Depends(get_current_user),
-):
-    service = FileService(db)
-    return service.get_file_list(
-        user_id=current_user.id
-    )
-
->>>>>>> feature/budget-ocr
 # ==========================================
 # 파일 업로드
 # POST
@@ -72,11 +46,7 @@ def upload_file(
     file:UploadFile = File(...),
     card_name:str = Form(...),
     db:Session = Depends(get_db),
-<<<<<<< HEAD
     current_user = Depends(get_current_user)
-=======
-    current_user = Depends(get_current_user),
->>>>>>> feature/budget-ocr
 ):
     service = FileService(db)
     filename = file.filename.lower()

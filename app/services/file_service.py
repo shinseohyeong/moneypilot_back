@@ -54,12 +54,13 @@ class FileService:
             exist_ok=True
         )
         # 저장경로 생성
-        file_path = UPLOAD_DIR / file.filename
+        file_path = UPLOAD_DIR / filename
         # 파일 저장
         with file_path.open("wb") as buffer:
             buffer.write(
                 file.file.read()
             )
+        file.file.seek(0)
         return file_path
     
     # =====================================
@@ -87,17 +88,21 @@ class FileService:
                 card_name
             )
 
+            # INSERT를 DB에 먼저 반영해서 statement.id 생성
+            self.db.flush()
+
             # 2. 거래 저장
             self.save_transactions(
                 user_id,
                 statement.id,
                 transactions
             )
+
             # 3. 성공 상태 변경
             statement.status = "COMPLETED"
             statement.processed_at = datetime.now()
 
-            # 여기서 한번만 저장
+            # 마지막에 한 번만 commit
             self.db.commit()
             return statement
 
