@@ -5,6 +5,7 @@
 #   - 관심종목, 현재가, 뉴스 요약, 섹터 인사이트, 투자성향을 조합해 답변합니다.
 # ============================================================
 
+import json
 from typing import Any
 
 from fastapi import HTTPException
@@ -16,6 +17,8 @@ from app.schemas.stock_chatbot_schema import (
     StockChatbotRequest,
     StockChatbotResponse,
     StockChatbotStockBrief,
+    StockChatHistoryItem,
+    StockChatHistoryResponse,
 )
 from app.services.user_risk_context_service import UserRiskContextService
 from app.clients.llm_client import get_llm_client
@@ -32,16 +35,17 @@ class StockChatbotService:
         self.db = db
         self.repository = StockChatbotRepository(db)
         self.user_risk_context_service = UserRiskContextService(db)
-        self.llm_client = get_llm_client()
 
     def ask_stock_chatbot(
         self,
         request: StockChatbotRequest,
     ) -> StockChatbotResponse:
         """
-        사용자 질문에 대해 주식 관련 답변을 생성합니다.
+        사용자 질문에 대해 주식 관련 답변을 생성하고
+        최종 질문/답변을 chatbot_messages에 저장합니다.
         """
         user_id = request.user_id
+        disclaimer = get_investment_disclaimer()
 
         risk_type = self.user_risk_context_service.get_user_risk_type(
             user_id=user_id,
@@ -58,9 +62,21 @@ class StockChatbotService:
         if not watchlist_rows:
             answer = (
                 "아직 등록된 관심종목이 없습니다. "
-                "관심종목을 먼저 등록하면 현재가, 뉴스 요약, 섹터 흐름을 바탕으로 답변할 수 있습니다. "
-                f"[투자성향: {risk_label}] {risk_guide} "
-                f"{get_investment_disclaimer()}"
+                "관심종목을 먼저 등록하면 현재가, 뉴스 요약, "
+                "섹터 흐름을 바탕으로 답변할 수 있습니다. "
+                f"[투자성향: {risk_label}] {risk_guide}"
+            )
+
+            self._save_chatbot_message(
+                request=request,
+                answer=answer,
+                items=[],
+                disclaimer=disclaimer,
+                answer_source="rule_fallback",
+                used_tools=[
+                    "user_risk_context",
+                    "watchlist",
+                ],
             )
 
             return StockChatbotResponse(
@@ -69,7 +85,7 @@ class StockChatbotService:
                 answer=answer,
                 risk_type=risk_type,
                 risk_label=risk_label,
-                disclaimer=get_investment_disclaimer(),
+                disclaimer=disclaimer,
                 items=[],
             )
 
@@ -124,6 +140,22 @@ class StockChatbotService:
         )
 
         answer = ai_answer if ai_answer else fallback_answer
+        answer_source = "llm" if ai_answer else "rule_fallback"
+
+        self._save_chatbot_message(
+            request=request,
+            answer=answer,
+            items=items,
+            disclaimer=disclaimer,
+            answer_source=answer_source,
+            used_tools=[
+                "user_risk_context",
+                "watchlist",
+                "latest_price",
+                "news_summary",
+                "sector_insight",
+            ],
+        )
 
         return StockChatbotResponse(
             user_id=user_id,
@@ -131,7 +163,105 @@ class StockChatbotService:
             answer=answer,
             risk_type=risk_type,
             risk_label=risk_label,
-            disclaimer=get_investment_disclaimer(),
+            disclaimer=disclaimer,
+            items=items,
+        )
+    
+    def _save_chatbot_message(
+        self,
+        request: StockChatbotRequest,
+        answer: str,
+        items: list[StockChatbotStockBrief],
+        disclaimer: str,
+        answer_source: str,
+        used_tools: list[str],
+    ) -> None:
+        """
+        최종 사용자 질문과 챗봇 답변을 저장합니다.
+
+        여러 종목을 참고한 경우:
+        - 요청에서 특정 stock_id가 지정된 경우에만
+        referenced_stock_id 컬럼에 저장합니다.
+        - 전체 참고 종목 목록은 used_tools JSON에 저장합니다.
+        """
+        requested_stock_id = request.stock_id
+
+        referenced_stock_id = (
+            requested_stock_id
+            if requested_stock_id is not None and requested_stock_id > 0
+            else None
+        )
+
+
+        used_tools_payload = {
+            "tools": used_tools,
+            "answer_source": answer_source,
+            "referenced_stock_ids": [
+                item.stock_id
+                for item in items
+            ],
+        }
+
+        try:
+            saved_message = self.repository.create_chatbot_message(
+                user_id=request.user_id,
+                chat_type="stock",
+                user_message=request.message,
+                agent_response=answer,
+                referenced_stock_id=referenced_stock_id,
+                used_tools=json.dumps(
+                    used_tools_payload,
+                    ensure_ascii=False,
+                ),
+                disclaimer=disclaimer,
+            )
+
+            self.db.commit()
+            self.db.refresh(saved_message)
+
+        except Exception as error:
+            self.db.rollback()
+
+            raise HTTPException(
+                status_code=500,
+                detail=(
+                    "주식 챗봇 대화 저장 중 오류가 발생했습니다: "
+                    f"{str(error)}"
+                ),
+            )
+    def get_stock_chat_history(
+        self,
+        user_id: int,
+        limit: int = 30,
+    ) -> StockChatHistoryResponse:
+        """
+        사용자의 저장된 주식 챗봇 대화기록을 조회합니다.
+        """
+        rows = self.repository.list_stock_chat_history(
+            user_id=user_id,
+            limit=limit,
+        )
+
+        total_count = self.repository.count_stock_chat_history(
+            user_id=user_id,
+        )
+
+        items = [
+            StockChatHistoryItem(
+                message_id=row.id,
+                user_message=row.user_message,
+                agent_response=row.agent_response,
+                referenced_stock_id=row.referenced_stock_id,
+                used_tools=row.used_tools,
+                disclaimer=row.disclaimer,
+                created_at=row.created_at,
+            )
+            for row in rows
+        ]
+
+        return StockChatHistoryResponse(
+            user_id=user_id,
+            total_count=total_count,
             items=items,
         )
 
@@ -257,7 +387,6 @@ class StockChatbotService:
             lines.append("")
 
         lines.append(f"[투자성향 해석: {risk_label}] {risk_guide}")
-        lines.append(get_investment_disclaimer())
 
         return "\n".join(lines)
     
@@ -290,7 +419,6 @@ class StockChatbotService:
             lines.append(f"위험 요인: {item.risk_factors}")
             lines.append("---")
 
-        lines.append(get_investment_disclaimer())
 
         return "\n".join(lines)
 
@@ -310,6 +438,7 @@ class StockChatbotService:
             "사용자에게 투자 권유를 하지 말고, 제공된 DB context 안의 정보만 바탕으로 답변한다. "
             "확정적인 매수/매도 추천, 수익 보장, 목표가 제시는 하지 않는다. "
             "뉴스, 시세, 섹터 흐름, 위험 요인을 균형 있게 설명한다. "
+            "투자 유의 문구는 별도 응답 필드로 제공되므로 답변 본문에 반복하지 않는다. "
             "한국어로 답변한다."
         )
 
@@ -317,7 +446,7 @@ class StockChatbotService:
             f"[사용자 질문]\n{user_message}\n\n"
             f"[DB context]\n{context}\n\n"
             "위 정보를 바탕으로 사용자가 이해하기 쉽게 답변해줘. "
-            "답변 마지막에는 투자 유의 문구를 짧게 포함해줘."
+            "투자 권유나 수익 보장 표현은 사용하지 마."
         )
 
         try:

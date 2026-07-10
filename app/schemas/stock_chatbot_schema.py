@@ -2,10 +2,12 @@
 # 파일 위치: app/schemas/stock_chatbot_schema.py
 # 역할:
 #   - 주식 챗봇 요청/응답 schema를 정의합니다.
-#   - 사용자의 질문과 챗봇 답변 구조를 관리합니다.
+#   - 주식 챗봇 대화기록 조회 schema를 정의합니다.
 # ============================================================
 
-from typing import Optional, List
+from datetime import datetime
+from typing import List, Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -14,11 +16,26 @@ class StockChatbotRequest(BaseModel):
     주식 챗봇 질문 요청 schema입니다.
     """
 
-    user_id: int = Field(..., description="사용자 ID")
-    message: str = Field(..., description="사용자 질문")
+    user_id: int = Field(
+        ...,
+        ge=1,
+        description="사용자 ID",
+    )
+
+    message: str = Field(
+        ...,
+        min_length=1,
+        max_length=2000,
+        description="사용자 질문",
+    )
+
     stock_id: Optional[int] = Field(
         default=None,
-        description="특정 종목에 대한 질문일 경우 종목 ID",
+        ge=0,
+        description=(
+            "특정 종목에 대한 질문일 경우 종목 ID. "
+            "0 또는 null이면 관심종목 전체 기준 질문"
+        ),
     )
 
 
@@ -30,8 +47,10 @@ class StockChatbotStockBrief(BaseModel):
     stock_id: int
     stock_code: str
     stock_name: str
+
     current_price: Optional[str] = None
     change_rate: Optional[str] = None
+
     news_summary: str
     sector_summary: str
     risk_factors: str
@@ -44,6 +63,7 @@ class StockChatbotResponse(BaseModel):
 
     user_id: int
     chat_type: str = "stock"
+
     user_message: str
     answer: str
 
@@ -52,4 +72,33 @@ class StockChatbotResponse(BaseModel):
 
     disclaimer: str
 
-    items: List[StockChatbotStockBrief] = []
+    items: List[StockChatbotStockBrief] = Field(default_factory=list)
+
+
+class StockChatHistoryItem(BaseModel):
+    """
+    저장된 주식 챗봇 대화 1건입니다.
+    """
+
+    message_id: int
+
+    user_message: str
+    agent_response: str
+
+    referenced_stock_id: Optional[int] = None
+    used_tools: Optional[str] = None
+    disclaimer: Optional[str] = None
+
+    created_at: datetime
+
+
+class StockChatHistoryResponse(BaseModel):
+    """
+    사용자의 주식 챗봇 대화기록 응답입니다.
+    """
+
+    user_id: int
+    chat_type: str = "stock"
+
+    total_count: int
+    items: List[StockChatHistoryItem] = Field(default_factory=list)
