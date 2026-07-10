@@ -28,8 +28,9 @@ class DepositRecommendResponse(BaseModel):
     product_name: str
     max_rate: float
     principal: int
-    expected_interest: int
     maturity_amount: int
+    before_tax_interest: int
+    after_tax_interest: int
 
 
 class SavingRateResponse(BaseModel):
@@ -59,5 +60,6 @@ class SavingRecommendResponse(BaseModel):
     product_name: str
     max_rate: float
     principal: int
-    expected_interest: int
     maturity_amount: int
+    before_tax_interest: int
+    after_tax_interest: int

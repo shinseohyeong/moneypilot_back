@@ -142,6 +142,9 @@ def sync_saving_products(db: Session):
         "message": "적금 상품이 성공적으로 동기화되었습니다."
     }
 
+def sync_insurance_products(db: Session):
+    
+
 def recommend_deposit_products(
     db: Session,
     term: int,
@@ -177,13 +180,18 @@ def recommend_deposit_products(
         if preferred_bank and product.bank_name == preferred_bank:
             score += 0.1
 
+        # 일반 과세(이자소득세 15.4%)
         principal = deposit_amount
-        expected_interest = (
+
+        before_tax_interest = (
             principal
             * (max_rate / 100)
             * (term / 12)
         )
-        maturity_amount = principal + expected_interest
+        
+        after_tax_interest = before_tax_interest * 0.846
+
+        maturity_amount = principal + after_tax_interest
 
         recommend_list.append({
             "id": product.id,
@@ -193,7 +201,8 @@ def recommend_deposit_products(
             "score": score,
             "max_rate": max_rate,
             "principal": principal,
-            "expected_interest": int(expected_interest),
+            "before_tax_interest": int(before_tax_interest),
+            "after_tax_interest": int(after_tax_interest),
             "maturity_amount": int(maturity_amount),
         })
 
@@ -214,7 +223,8 @@ def recommend_deposit_products(
             "product_name": product.product_name,
             "max_rate": item["max_rate"],
             "principal": item["principal"],
-            "expected_interest": item["expected_interest"],
+            "before_tax_interest": item["before_tax_interest"],
+            "after_tax_interest": item["after_tax_interest"],
             "maturity_amount": item["maturity_amount"],
         })
     return result
@@ -255,13 +265,17 @@ def recommend_saving_products(
             score += 0.1
 
         principal = monthly_amount * term
-        expected_interest = (
+
+        before_tax_interest = (
             monthly_amount
             * (max_rate / 100)
             * (term + 1)
-            / 24
+            /24
         )
-        maturity_amount = principal + expected_interest
+
+        after_tax_interest = before_tax_interest * 0.846
+
+        maturity_amount = principal + after_tax_interest
 
         recommend_list.append({
             "id": product.id,
@@ -271,7 +285,8 @@ def recommend_saving_products(
             "score": score,
             "max_rate": max_rate,
             "principal": principal,
-            "expected_interest": int(expected_interest),
+            "before_tax_interest": int(before_tax_interest),
+            "after_tax_interest": int(after_tax_interest),
             "maturity_amount": int(maturity_amount),
         })
 
@@ -292,7 +307,8 @@ def recommend_saving_products(
             "product_name": product.product_name,
             "max_rate": item["max_rate"],
             "principal": item["principal"],
-            "expected_interest": item["expected_interest"],
+            "before_tax_interest": item["before_tax_interest"],
+            "after_tax_interest": item["after_tax_interest"],
             "maturity_amount": item["maturity_amount"],
         })
     return result
