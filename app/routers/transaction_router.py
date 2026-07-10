@@ -75,13 +75,40 @@ def get_transactions_by_date(
 def update_transaction(
     transaction_id:int,
     request:TransactionCreate,
-    db:Session=Depends(get_db)
+    db:Session=Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     service = TransactionService(db)
     return service.update_transaction(
         transaction_id,
+        current_user.id,
         request
     )
+    
+# ==========================================
+# 현금 거래 삭제
+# DELETE
+# /api/transactions/{transaction_id
+# ==========================================
+@router.delete(
+    "/{transaction_id}",
+    summary="거래 삭제"
+)
+def delete_transaction(
+    transaction_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    service = TransactionService(db)
+
+    service.delete_transaction(
+        transaction_id,
+        current_user.id
+    )
+
+    return {
+        "message": "거래 삭제 완료"
+    }
     
 # ==========================================
 # 현금 거래 수기 입력

@@ -29,7 +29,7 @@ class TransactionRepository:
         transaction:Transaction
     ):
         self.db.add(transaction)
-        self.db.commit()
+        # commit()은 service에서 하는걸로 변경
         self.db.refresh(transaction)
         return transaction
 
@@ -41,10 +41,7 @@ class TransactionRepository:
         self,
         transactions:list
     ):
-        self.db.add_all(
-            transactions
-        )
-        self.db.commit()
+        self.db.add_all(transactions)
         return transactions
 
     # ======================================
@@ -53,11 +50,13 @@ class TransactionRepository:
     # ======================================
     def find_all_by_statement(
         self,
-        statement_id:int
+        statement_id:int,
+        user_id: int
     ):
         return (
             self.db.query(Transaction).filter(
-                Transaction.statement_id == statement_id
+                Transaction.statement_id == statement_id,
+                Transaction.user_id == user_id
             ).all()
         )
         
@@ -67,11 +66,13 @@ class TransactionRepository:
     # ======================================
     def find_by_id(
         self,
-        transaction_id:int
+        transaction_id:int,
+        user_id: int
     ):
         return (
             self.db.query(Transaction).filter(
-                Transaction.id == transaction_id
+                Transaction.id == transaction_id,
+                Transaction.user_id == user_id
             ).first()
         )
 
@@ -83,8 +84,8 @@ class TransactionRepository:
         self,
         transaction:Transaction
     ):
-        self.db.commit()
         self.db.refresh(transaction)
+        # refresh는 service에서 하는걸로 변경
         return transaction
 
     # ======================================

@@ -16,6 +16,7 @@ from datetime import datetime
 import pandas as pd
 from fastapi import UploadFile, HTTPException
 from sqlalchemy.orm import Session
+import uuid
 
 from app.models import (
     CardStatement,
@@ -24,6 +25,7 @@ from app.models import (
 from app.services.parser import parse_excel
 from app.repositories.card_statement_repository import FileRepository
 from app.repositories.transaction_repository import TransactionRepository
+from app.services.vision_service import VisionService
 
 UPLOAD_DIR = Path("uploads")
 
@@ -33,6 +35,7 @@ class FileService:
         self.db = db
         self.file_repository = FileRepository(db)
         self.transaction_repository = TransactionRepository(db)
+        self.vision_service = VisionService()
     # ===============================
     # 1. 파일 저장
     # 역할:
@@ -45,6 +48,7 @@ class FileService:
         self,
         file: UploadFile
     ):
+        filename = f"{uuid.uuid4()}_{file.filename}"
         # 저장 폴더 생성(없으면)
         UPLOAD_DIR.mkdir(
             exist_ok=True
@@ -65,13 +69,13 @@ class FileService:
     # 3. 상태 변경
     # =====================================
     def upload_process(
-    self,
-    user_id:int,
-    file_name:str,
-    file_url:str,
-    file_type:str,
-    card_name:str,
-    transactions:list
+        self,
+        user_id:int,
+        file_name:str,
+        file_url:str,
+        file_type:str,
+        card_name:str,
+        transactions:list
     ):
         try:
             # 1. 명세서 저장
@@ -145,6 +149,14 @@ class FileService:
             card_name
         )
 
+    # ======================================
+    # Vision 거래내역 추출
+    # ======================================
+    def parse_card_statement(
+        self,
+        file_path: str
+    ):
+        return self.vision_service.extract_transactions(file_path)
     # ===============================
     # 4. 거래내역 DB 저장
     # transactions 테이블 INSERT
@@ -174,6 +186,7 @@ class FileService:
         file_path: str
     ):
         file_path = str(file_path)
+        suffix = Path(file_path).suffix.lower()
 
         if file_path.endswith(".xlsx"):
             df = pd.read_excel(
@@ -281,6 +294,8 @@ class FileService:
             status_code=404,
             detail="파일이 존재하지 않습니다."
         )
+        if not statement:
+            raise Exception("파일이 존재하지 않습니다.")
         return {
         "statement_id":statement.id,
         "status":statement.status,

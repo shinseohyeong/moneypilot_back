@@ -1,5 +1,5 @@
-from app.services.parsers.parser_shinhan import parse_shinhan
-from app.services.parsers.parser_kb import parse_kb
+from parsers.parser_shinhan import parse_shinhan
+from parsers.parser_kb import parse_kb
 
 PARSERS = {
     "신한카드": parse_shinhan,
