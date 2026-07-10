@@ -14,7 +14,7 @@ from pathlib import Path
 import os
 from datetime import datetime
 import pandas as pd
-from fastapi import UploadFile
+from fastapi import UploadFile, HTTPException
 from sqlalchemy.orm import Session
 
 from app.models import (
@@ -22,6 +22,8 @@ from app.models import (
     Transaction
 )
 from app.services.parser import parse_excel
+from app.repositories.card_statement_repository import FileRepository
+from app.repositories.transaction_repository import TransactionRepository
 
 UPLOAD_DIR = Path("uploads")
 
@@ -29,6 +31,8 @@ class FileService:
     def __init__(self, db: Session):
         # DB 세션 저장
         self.db = db
+        self.file_repository = FileRepository(db)
+        self.transaction_repository = TransactionRepository(db)
     # ===============================
     # 1. 파일 저장
     # 역할:
@@ -54,6 +58,12 @@ class FileService:
             )
         return file_path
     
+    # =====================================
+    # 업로드 처리 상태
+    # 1. 명세서 저장
+    # 2. 거래 저장
+    # 3. 상태 변경
+    # =====================================
     def upload_process(
     self,
     user_id:int,
@@ -110,13 +120,11 @@ class FileService:
             file_name=file_name,
             file_url=file_url,
             file_type=file_type.upper(),
-            # 처음 업로드 상태
             status="PROCESSING",
             card_name=card_name
         )
-        self.db.add(statement)
-        self.db.flush()
-        return statement
+
+        return self.file_repository.save(statement)
 
     # ===============================
     # 3. 거래내역 파싱
@@ -154,7 +162,8 @@ class FileService:
                 statement_id=statement_id,
                 **data
             )
-            self.db.add(transaction)
+
+            self.transaction_repository.save(transaction)
 
     # ===============================
     # 2. 엑셀 읽기
@@ -179,8 +188,9 @@ class FileService:
             )
 
         else:
-            raise Exception(
-                "지원하지 않는 파일 형식"
+            raise HTTPException(
+                status_code=404,
+                detail="파일이 존재하지 않습니다."
             )
         return df
     
@@ -191,13 +201,7 @@ class FileService:
         self,
         user_id:int
     ):
-        return (
-            self.db.query(CardStatement).filter(
-                CardStatement.user_id==user_id
-            ).order_by(
-                CardStatement.uploaded_at.desc()
-            ).all()
-        )
+        return self.file_repository.find_all_by_user(user_id)
 
     # ======================================
     # 파일 상세 조회
@@ -206,13 +210,17 @@ class FileService:
     # ======================================
     def get_file_detail(
         self,
-        statement_id:int
+        statement_id:int,
+        user_id:int,
     ):
-        statement=(
-            self.db.query(CardStatement).filter(
-                CardStatement.id==statement_id
-            ).first()
-        )
+        statement = self.file_repository.find_by_id(statement_id, user_id)
+
+        if not statement:
+            raise HTTPException(
+                status_code=404,
+                detail="파일이 존재하지 않습니다."
+            )
+
         return statement
 
     # ======================================
@@ -224,51 +232,57 @@ class FileService:
     # ======================================
     def delete_file(
         self,
-        statement_id:int
+        statement_id: int,
+        user_id: int
     ):
-        statement=(
-            self.db.query(CardStatement).filter(
-                CardStatement.id==statement_id
-            ).first()
+        statement = self.file_repository.find_by_id(
+            statement_id,
+            user_id
         )
+
         if not statement:
-            raise Exception(
-                "파일 없음"
+            raise HTTPException(
+                status_code=404,
+                detail="파일이 존재하지 않습니다."
             )
 
-        # 실제 파일 삭제
-        if os.path.exists(
-            statement.file_url
-        ):
-            os.remove(
-                statement.file_url
+        try:
+            # 실제 파일 삭제
+            if os.path.exists(statement.file_url):
+                os.remove(statement.file_url)
+
+            # 거래내역 삭제
+            self.transaction_repository.delete_by_statement_id(
+                statement.id
             )
 
-        # 거래내역 삭제
-        self.db.query(Transaction)\
-            .filter(
-                Transaction.statement_id==statement_id
-            )\
-            .delete()
+            # 명세서 삭제
+            self.file_repository.delete(
+                statement
+            )
 
-        # 명세서 삭제
-        self.db.delete(statement)
-        self.db.commit()
+            self.db.commit()
+
+        except Exception:
+            self.db.rollback()
+            raise
 
     # ======================================
     # 처리 상태 조회
     # ======================================
     def get_file_status(
         self,
-        statement_id:int
+        statement_id:int,
+        user_id:int
     ):
-        statement=(
-            self.db.query(CardStatement).filter(
-                CardStatement.id==statement_id
-            ).first()
+        statement = self.file_repository.find_by_id(statement_id, user_id)
+        if not statement:
+            raise HTTPException(
+            status_code=404,
+            detail="파일이 존재하지 않습니다."
         )
         return {
-            "statement_id":statement.id,
-            "status":statement.status,
-            "error_message":statement.error_message
-        }
+        "statement_id":statement.id,
+        "status":statement.status,
+        "error_message":statement.error_message
+    }

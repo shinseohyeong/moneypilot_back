@@ -91,12 +91,10 @@ class TransactionRepository:
     # 거래 삭제
     # DELETE
     # ======================================
-    def delete(
-        self,
-        transaction:Transaction
-    ):
-        self.db.delete(transaction)
-        self.db.commit()
+    def delete_by_statement_id(self, statement_id: int):
+        self.db.query(Transaction).filter(
+            Transaction.statement_id == statement_id
+        ).delete(synchronize_session=False)
      
     # ======================================
     # 월별 조회

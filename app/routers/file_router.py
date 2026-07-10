@@ -19,32 +19,11 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.services.file_service import FileService
+from app.core.dependencies import get_current_user
 
 router = APIRouter(
     tags=["Files"]
 )
-
-# 파일 저장 위치
-UPLOAD_DIR="uploads"
-
-# ==========================================
-# 업로드 파일 목록 조회
-# GET
-# /api/files
-# card_statements 테이블 조회
-# ==========================================
-@router.get(
-    "",
-    summary="파일 목록 조회",
-    description="사용자가 업로드한 거래명세서 목록을 조회합니다."
-)
-def file_list(
-    db:Session = Depends(get_db)
-):
-    service = FileService(db)
-    return service.get_file_list(
-        user_id=1
-    )
 
 # ==========================================
 # 파일 업로드
@@ -65,7 +44,8 @@ def file_list(
 async def upload_file(
     file:UploadFile = File(...),
     card_name:str = Form(...),
-    db:Session = Depends(get_db)
+    db:Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     service = FileService(db)
     # 1. 실제 파일 저장
@@ -79,7 +59,7 @@ async def upload_file(
 
     # 4. 명세서 + 거래내역 한번에 저장
     statement = service.upload_process(
-        user_id=1,
+        user_id=current_user.id,
         file_name=file.filename,
         file_url=str(file_path),
         file_type=file.filename.split(".")[-1],
@@ -94,6 +74,26 @@ async def upload_file(
     }
 
 # ==========================================
+# 업로드 파일 목록 조회
+# GET
+# /api/files
+# card_statements 테이블 조회
+# ==========================================
+@router.get(
+    "",
+    summary="파일 목록 조회",
+    description="사용자가 업로드한 거래명세서 목록을 조회합니다."
+)
+def file_list(
+    db:Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    service = FileService(db)
+    return service.get_file_list(
+        user_id=current_user.id
+    )
+    
+# ==========================================
 # 파일 상세 조회
 # GET
 # /api/files/{statement_id}
@@ -105,13 +105,14 @@ async def upload_file(
 )
 def get_file(
     statement_id:int,
-    db:Session = Depends(get_db)
+    db:Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     service = FileService(db)
-    result = service.get_file_detail(
-        statement_id
+    return service.get_file_detail(
+        statement_id=statement_id,
+        user_id=current_user.id
     )
-    return result
 
 # ==========================================
 # 파일 삭제
@@ -131,14 +132,17 @@ def get_file(
 )
 def delete_file(
     statement_id:int,
-    db:Session = Depends(get_db)
+    db:Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     service = FileService(db)
     service.delete_file(
-        statement_id
+        statement_id=statement_id,
+        user_id=current_user.id
     )
+
     return {
-        "message":"파일 삭제 완료"
+        "message": "파일 삭제 완료"
     }
     
 # ==========================================
@@ -153,10 +157,11 @@ def delete_file(
 )
 def get_file_status(
     statement_id:int,
-    db:Session = Depends(get_db)
+    db:Session = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     service = FileService(db)
-    result = service.get_file_status(
-        statement_id
+    return service.get_file_status(
+        statement_id=statement_id,
+        user_id=current_user.id
     )
-    return result
