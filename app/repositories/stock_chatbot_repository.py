@@ -8,10 +8,14 @@
 
 from typing import Optional
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.chatbot_model import ChatbotMessage
 from app.repositories.stock_report_repository import StockReportRepository
+from app.models.chatbot_conversation_model import ChatbotConversation
+from app.models.chatbot_model import ChatbotMessage
+from app.models.chatbot_conversation_model import ChatbotConversation
 
 
 class StockChatbotRepository:
@@ -70,6 +74,7 @@ class StockChatbotRepository:
     # ------------------------------------------------------------
     def create_chatbot_message(
         self,
+        conversation_id: int,
         user_id: int,
         chat_type: str,
         user_message: str,
@@ -86,6 +91,7 @@ class StockChatbotRepository:
         - commit/rollback은 service에서 처리합니다.
         """
         chatbot_message = ChatbotMessage(
+            conversation_id=conversation_id,
             user_id=user_id,
             chat_type=chat_type,
             user_message=user_message,
@@ -144,4 +150,105 @@ class StockChatbotRepository:
                 ChatbotMessage.chat_type == "stock",
             )
             .count()
+        )
+
+    # ------------------------------------------------------------
+    # ChatbotConversation
+    # ------------------------------------------------------------
+    def create_conversation(
+        self,
+        user_id: int,
+        chat_type: str,
+        title: str,
+    ) -> ChatbotConversation:
+        conversation = ChatbotConversation(
+            user_id=user_id,
+            chat_type=chat_type,
+            title=title,
+        )
+
+        self.db.add(conversation)
+        self.db.flush()
+
+        return conversation
+
+
+    def get_conversation(
+        self,
+        conversation_id: int,
+        user_id: int,
+    ) -> Optional[ChatbotConversation]:
+        return (
+            self.db.query(ChatbotConversation)
+            .filter(
+                ChatbotConversation.id == conversation_id,
+                ChatbotConversation.user_id == user_id,
+                ChatbotConversation.chat_type == "stock",
+            )
+            .first()
+        )
+
+
+    def touch_conversation(
+        self,
+        conversation: ChatbotConversation,
+    ) -> None:
+        """
+        마지막 대화 시간을 갱신합니다.
+        """
+        conversation.updated_at = func.now()
+        self.db.flush()
+
+
+    def list_stock_conversations(
+        self,
+        user_id: int,
+        limit: int = 30,
+    ):
+        return (
+            self.db.query(ChatbotConversation)
+            .filter(
+                ChatbotConversation.user_id == user_id,
+                ChatbotConversation.chat_type == "stock",
+            )
+            .order_by(
+                ChatbotConversation.updated_at.desc(),
+                ChatbotConversation.id.desc(),
+            )
+            .limit(limit)
+            .all()
+        )
+
+
+    def count_stock_conversations(
+        self,
+        user_id: int,
+    ) -> int:
+        return (
+            self.db.query(ChatbotConversation)
+            .filter(
+                ChatbotConversation.user_id == user_id,
+                ChatbotConversation.chat_type == "stock",
+            )
+            .count()
+        )
+
+
+    def list_conversation_messages(
+        self,
+        conversation_id: int,
+        user_id: int,
+    ):
+        return (
+            self.db.query(ChatbotMessage)
+            .filter(
+                ChatbotMessage.conversation_id == conversation_id,
+                ChatbotMessage.user_id == user_id,
+                ChatbotMessage.chat_type == "stock",
+            )
+            .order_by(
+                ChatbotMessage.created_at.asc(),
+                ChatbotMessage.id.asc(),
+            )
+            .all()
         )

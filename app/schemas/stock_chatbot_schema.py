@@ -38,6 +38,15 @@ class StockChatbotRequest(BaseModel):
         ),
     )
 
+    conversation_id: Optional[int] = Field(
+        default=None,
+        ge=1,
+        description=(
+            "기존 대화방 ID입니다. "
+            "값이 없으면 첫 질문을 기준으로 새 대화방을 생성합니다."
+        ),
+    )
+
 
 class StockChatbotStockBrief(BaseModel):
     """
@@ -61,6 +70,10 @@ class StockChatbotResponse(BaseModel):
     주식 챗봇 응답 schema입니다.
     """
 
+    conversation_id: int
+    message_id: int
+    intent: str
+
     user_id: int
     chat_type: str = "stock"
 
@@ -73,6 +86,7 @@ class StockChatbotResponse(BaseModel):
     disclaimer: str
 
     items: List[StockChatbotStockBrief] = Field(default_factory=list)
+    
 
 
 class StockChatHistoryItem(BaseModel):
@@ -102,3 +116,37 @@ class StockChatHistoryResponse(BaseModel):
 
     total_count: int
     items: List[StockChatHistoryItem] = Field(default_factory=list)
+
+class StockChatConversationItem(BaseModel):
+    conversation_id: int
+    title: str
+    chat_type: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class StockChatConversationListResponse(BaseModel):
+    user_id: int
+    total_count: int
+    items: List[StockChatConversationItem] = Field(
+        default_factory=list,
+    )
+
+
+class StockChatConversationMessageItem(BaseModel):
+    message_id: int
+    user_message: str
+    agent_response: str
+    referenced_stock_id: Optional[int] = None
+    used_tools: Optional[str] = None
+    disclaimer: Optional[str] = None
+    created_at: datetime
+
+
+class StockChatConversationMessagesResponse(BaseModel):
+    conversation_id: int
+    title: str
+    total_count: int
+    items: List[StockChatConversationMessageItem] = Field(
+        default_factory=list,
+    )

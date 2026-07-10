@@ -4,7 +4,7 @@
 #   - 주식 챗봇 / 소비 기반 금융 챗봇 API 엔드포인트를 정의합니다.
 # ============================================================
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Path, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -12,7 +12,9 @@ from app.core.database import get_db
 from app.schemas.stock_chatbot_schema import (
     StockChatbotRequest,
     StockChatbotResponse,
-    StockChatHistoryResponse,
+    StockChatHistoryResponse, # 테스트 호환용
+    StockChatConversationListResponse,
+    StockChatConversationMessagesResponse,
 )
 from app.services.stock_chatbot_service import StockChatbotService
 
@@ -49,6 +51,7 @@ def ask_stock_chatbot(
 ) -> StockChatbotResponse:
     return service.ask_stock_chatbot(request)
 
+# 테스트 호환용
 @router.get(
     "/stock/history",
     response_model=StockChatHistoryResponse,
@@ -82,3 +85,38 @@ def ask_finance_chatbot(
     service: FinanceChatbotService = Depends(get_finance_chatbot_service),
 ) -> FinanceChatbotResponse:
     return service.create_finance_answer(request)
+
+@router.get(
+    "/stock/conversations",
+    response_model=StockChatConversationListResponse,
+    summary="주식 챗봇 대화방 목록 조회",
+)
+def get_stock_conversations(
+    user_id: int = Query(..., ge=1),
+    limit: int = Query(default=30, ge=1, le=100),
+    service: StockChatbotService = Depends(
+        get_stock_chatbot_service
+    ),
+):
+    return service.get_stock_conversations(
+        user_id=user_id,
+        limit=limit,
+    )
+
+
+@router.get(
+    "/stock/conversations/{conversation_id}/messages",
+    response_model=StockChatConversationMessagesResponse,
+    summary="주식 챗봇 대화방 메시지 조회",
+)
+def get_stock_conversation_messages(
+    conversation_id: int = Path(..., ge=1),
+    user_id: int = Query(..., ge=1),
+    service: StockChatbotService = Depends(
+        get_stock_chatbot_service
+    ),
+):
+    return service.get_stock_conversation_messages(
+        conversation_id=conversation_id,
+        user_id=user_id,
+    )
