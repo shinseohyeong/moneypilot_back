@@ -2,7 +2,7 @@ from fastapi import APIRouter,Depends
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.services.financial_product_service import get_deposit_products, get_saving_products, sync_deposit_products, sync_saving_products, get_insurance_products
+from app.services.financial_product_service import get_deposit_products, get_saving_products, sync_deposit_products, sync_saving_products, get_insurance_products, recommend_deposit_products, recommend_saving_products
 from app.clients.financial_product_client import fetch_deposit_products
 from app.schemas.financial_product_schema import DepositProductResponse, SavingProductResponse
 
@@ -12,8 +12,18 @@ router = APIRouter(tags=["Financial Products"])
 @router.get(
         "/deposits",
         response_model=list[DepositProductResponse],)
-def get_deposits(db: Session = Depends(get_db)):
-    return get_deposit_products(db)
+def get_deposits(
+    db: Session = Depends(get_db),
+    bank: str | None = None,
+    term: int | None = None,
+    sort: str | None = None
+    ):
+    return get_deposit_products(
+        db=db,
+        bank=bank,
+        term=term,
+        sort=sort
+        )
 
 # 적금조회
 @router.get(
@@ -36,3 +46,37 @@ def sync_savings(db: Session = Depends(get_db)):
 @router.get("/insuances")
 def read_insurance_products(db: Session = Depends(get_db)):
     return get_insurance_products(db)
+
+@router.post(
+        "/deposits/recommend",
+        response_model=list[DepositProductResponse],
+        )
+def recommend_deposits(
+    term: int,
+    db: Session = Depends(get_db),
+    preffered_bank: str | None = None,
+    limit: int = 5,
+):
+    return recommend_deposit_products(
+        db=db,
+        term=term,
+        limit=limit,
+        preferred_bank=preffered_bank,
+    )
+
+@router.post(
+        "/savings/recommend",
+        response_model=list[SavingProductResponse],
+        )
+def recommend_savings(
+    term: int,
+    db: Session = Depends(get_db),
+    preffered_bank: str | None = None,
+    limit: int = 5,
+):
+    return recommend_saving_products(
+        db=db,
+        term=term,
+        limit=limit,
+        preferred_bank=preffered_bank,
+    )

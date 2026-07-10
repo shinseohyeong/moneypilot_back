@@ -240,3 +240,100 @@ def sync_saving_products(db: Session):
     return {
         "message": "적금 상품이 성공적으로 동기화되었습니다."
     }
+
+def recommend_deposit_products(
+    db: Session,
+    term: int,
+    limit: int = 5,
+    preferred_bank: str | None = None
+):
+    products = (
+        db.query(DepositProduct)
+        .options(selectinload(DepositProduct.rates))
+        .all()
+    )
+
+    recommend_list = []
+
+    # 원하는 가입기간만 선택
+    for product in products:
+        rates = [
+            rate for rate in product.rates
+            if rate.term_months == term
+        ]
+
+        if not rates:
+            continue
+
+        max_rate = max(rate.max_rate for rate in rates)
+
+        # 추천 점수 계산
+        score = max_rate
+
+        # 선호은행 가산점
+        if preferred_bank and product.bank_name == preferred_bank:
+            score += 1
+
+        recommend_list.append({
+            "product": product,
+            "score": score,
+            "max_rate": max_rate,
+        })
+
+    # 점수 순 정렬
+    recommend_list.sort(
+        key=lambda x: x["score"],
+        reverse=True,
+    )
+
+    # 상품만 반환
+    return [item["product"] for item in recommend_list[:limit]]
+
+
+def recommend_saving_products(
+    db: Session,
+    term: int,
+    limit: int = 5,
+    preferred_bank: str | None = None
+):
+    products = (
+        db.query(SavingProduct)
+        .options(selectinload(SavingProduct.rates))
+        .all()
+    )
+
+    recommend_list = []
+
+    # 원하는 가입기간만 선택
+    for product in products:
+        rates = [
+            rate for rate in product.rates
+            if rate.term_months == term
+        ]
+
+        if not rates:
+            continue
+
+        max_rate = max(rate.max_rate for rate in rates)
+
+        # 추천 점수 계산
+        score = max_rate
+
+        # 선호은행 가산점
+        if preferred_bank and product.bank_name == preferred_bank:
+            score += 1
+
+        recommend_list.append({
+            "product": product,
+            "score": score,
+            "max_rate": max_rate,
+        })
+
+    # 점수 순 정렬
+    recommend_list.sort(
+        key=lambda x: x["score"],
+        reverse=True,
+    )
+
+    # 상품만 반환
+    return [item["product"] for item in recommend_list[:limit]]
