@@ -16,6 +16,7 @@ from datetime import datetime
 import pandas as pd
 from fastapi import UploadFile
 from sqlalchemy.orm import Session
+import uuid
 
 from app.models import (
     CardStatement,
@@ -24,7 +25,6 @@ from app.models import (
 from app.services.parser import parse_excel
 from app.repositories.card_statement_repository import FileRepository
 from app.services.vision_service import VisionService
-from parsers.vision_parser import vision_parser
 
 UPLOAD_DIR = Path("uploads")
 
@@ -46,6 +46,7 @@ class FileService:
         self,
         file: UploadFile
     ):
+        filename = f"{uuid.uuid4()}_{file.filename}"
         # 저장 폴더 생성(없으면)
         UPLOAD_DIR.mkdir(
             exist_ok=True
@@ -149,7 +150,7 @@ class FileService:
         self,
         file_path: str
     ):
-        return vision_parser(file_path)
+        return self.vision_service.extract_transactions(file_path)
     # ===============================
     # 4. 거래내역 DB 저장
     # transactions 테이블 INSERT
@@ -178,6 +179,7 @@ class FileService:
         file_path: str
     ):
         file_path = str(file_path)
+        suffix = Path(file_path).suffix.lower()
 
         if file_path.endswith(".xlsx"):
             df = pd.read_excel(
@@ -226,6 +228,8 @@ class FileService:
                 CardStatement.id==statement_id
             ).first()
         )
+        if not statement:
+            raise Exception("파일이 존재하지 않습니다.")
         return statement
 
     # ======================================
@@ -280,6 +284,8 @@ class FileService:
                 CardStatement.id==statement_id
             ).first()
         )
+        if not statement:
+            raise Exception("파일이 존재하지 않습니다.")
         return {
             "statement_id":statement.id,
             "status":statement.status,

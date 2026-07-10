@@ -4,6 +4,8 @@
 # Vision Parser 호출
 # Vision 결과 후처리
 # ==========================================
+from datetime import datetime
+
 from parsers.vision_parser import vision_parser
 
 class VisionService:
@@ -15,9 +17,19 @@ class VisionService:
         file_path: str
     ):
         transactions = vision_parser(file_path)
-        # 나중에 후처리 필요하면 여기서
-        # 날짜 형식 변환
-        # amount int 변환
-        # category 추론
+        # 후처리
+        for tx in transactions:
+
+            # 날짜 문자열 → date 객체
+            tx["transaction_date"] = datetime.strptime(
+                tx["transaction_date"],
+                "%Y-%m-%d"
+            ).date()
+
+            # month 생성
+            tx["month"] = tx["transaction_date"].strftime("%Y-%m")
+
+            # 금액 int 보장
+            tx["amount"] = int(tx["amount"].replace(",", ""))
 
         return transactions
