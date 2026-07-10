@@ -10,6 +10,8 @@ from sqlalchemy import (
 
 from app.core.database import Base
 
+from app.models.chatbot_conversation_model import ChatbotConversation
+
 
 class ChatbotMessage(Base):
     __tablename__ = "chatbot_messages"
@@ -57,6 +59,13 @@ class ChatbotMessage(Base):
         BigInteger,
         ForeignKey("financial_product_recommendations.id"),
         nullable=True,
+    )
+
+    conversation_id = Column(
+        BigInteger,
+        ForeignKey("chatbot_conversations.id"),
+        nullable=True,
+        index=True,
     )
 
     # 예: 사용한 tool 목록을 JSON 문자열 형태로 저장
