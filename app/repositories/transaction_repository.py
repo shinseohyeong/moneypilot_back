@@ -26,11 +26,9 @@ class TransactionRepository:
     # ======================================
     def save(
         self,
-        transaction:Transaction
+        transaction: Transaction
     ):
         self.db.add(transaction)
-        # commit()은 service에서 하는걸로 변경
-        self.db.refresh(transaction)
         return transaction
 
     # ======================================
