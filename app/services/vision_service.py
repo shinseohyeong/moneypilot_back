@@ -30,6 +30,6 @@ class VisionService:
             tx["month"] = tx["transaction_date"].strftime("%Y-%m")
 
             # 금액 int 보장
-            tx["amount"] = int(tx["amount"].replace(",", ""))
+            tx["amount"] = int(str(tx["amount"]).replace(",", ""))
 
         return transactions
