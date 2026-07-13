@@ -1,18 +1,6 @@
-from typing import Any, Literal, TypedDict
+from typing import Any, TypedDict
 
-
-AgentIntent = Literal[
-    "spending_summary",
-    "spending_category",
-    "spending_report",
-    "agent_chat_rag",
-    "finance_profile",
-    "stock_price",
-    "stock_news",
-    "product_recommend",
-    "disclaimer",
-    "general",
-]
+from app.agent.schemas import AgentAction
 
 
 class AgentState(TypedDict, total=False):
@@ -23,7 +11,7 @@ class AgentState(TypedDict, total=False):
     month: str | None
     history: list[dict[str, Any]]
 
-    intent: AgentIntent
+    intent: AgentAction
 
     tool_result: dict[str, Any] | None
     rag_result: dict[str, Any] | None

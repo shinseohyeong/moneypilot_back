@@ -1,6 +1,11 @@
+from datetime import datetime
+
 from sqlalchemy.orm import Session
 
-from app.models.agent_chat_model import AgentChatMessage, AgentChatSession
+from app.models.agent_chat_model import (
+    AgentChatMessage,
+    AgentChatSession,
+)
 
 
 class AgentChatRepository:
@@ -15,7 +20,7 @@ class AgentChatRepository:
         self,
         user_id: int,
         title: str | None = None,
-        chat_type: str = "consumption",
+        chat_type: str = "general",
     ) -> AgentChatSession:
         session = AgentChatSession(
             user_id=user_id,
@@ -50,10 +55,30 @@ class AgentChatRepository:
     ) -> list[AgentChatSession]:
         return (
             self.db.query(AgentChatSession)
-            .filter(AgentChatSession.user_id == user_id)
-            .order_by(AgentChatSession.updated_at.desc())
+            .filter(
+                AgentChatSession.user_id == user_id
+            )
+            .order_by(
+                AgentChatSession.updated_at.desc()
+            )
             .limit(limit)
             .all()
+        )
+
+    def get_last_message(
+        self,
+        session_id: int,
+    ) -> AgentChatMessage | None:
+        return (
+            self.db.query(AgentChatMessage)
+            .filter(
+                AgentChatMessage.session_id == session_id
+            )
+            .order_by(
+                AgentChatMessage.created_at.desc(),
+                AgentChatMessage.id.desc(),
+            )
+            .first()
         )
 
     def create_message(
@@ -78,11 +103,21 @@ class AgentChatRepository:
             disclaimer=disclaimer,
         )
 
+        session = (
+            self.db.query(AgentChatSession)
+            .filter(
+                AgentChatSession.id == session_id
+            )
+            .first()
+        )
+
+        if session:
+            session.updated_at = datetime.now()
+            self.db.add(session)
+
         self.db.add(message)
         self.db.commit()
         self.db.refresh(message)
-
-        self.touch_session(session_id=session_id)
 
         return message
 
@@ -93,32 +128,18 @@ class AgentChatRepository:
     ) -> list[AgentChatMessage]:
         messages = (
             self.db.query(AgentChatMessage)
-            .filter(AgentChatMessage.session_id == session_id)
-            .order_by(AgentChatMessage.created_at.desc())
+            .filter(
+                AgentChatMessage.session_id == session_id
+            )
+            .order_by(
+                AgentChatMessage.created_at.desc(),
+                AgentChatMessage.id.desc(),
+            )
             .limit(limit)
             .all()
         )
 
         return list(reversed(messages))
-
-    def touch_session(
-        self,
-        session_id: int,
-    ) -> None:
-        session = (
-            self.db.query(AgentChatSession)
-            .filter(AgentChatSession.id == session_id)
-            .first()
-        )
-
-        if not session:
-            return
-
-        # updated_at의 onupdate가 동작하도록 session을 dirty 상태로 만든다.
-        session.title = session.title
-
-        self.db.add(session)
-        self.db.commit()
 
     def update_session_title(
         self,
@@ -126,6 +147,21 @@ class AgentChatRepository:
         title: str,
     ) -> AgentChatSession:
         session.title = title
+        session.updated_at = datetime.now()
+
+        self.db.add(session)
+        self.db.commit()
+        self.db.refresh(session)
+
+        return session
+
+    def update_session_chat_type(
+        self,
+        session: AgentChatSession,
+        chat_type: str,
+    ) -> AgentChatSession:
+        session.chat_type = chat_type
+        session.updated_at = datetime.now()
 
         self.db.add(session)
         self.db.commit()

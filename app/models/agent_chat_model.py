@@ -3,6 +3,7 @@ from sqlalchemy import (
     Column,
     DateTime,
     ForeignKey,
+    Index,
     String,
     Text,
     func,
@@ -13,13 +14,27 @@ from app.core.database import Base
 
 class AgentChatSession(Base):
     """
-    Agent 대화방 정보를 저장하는 모델.
-    ChatGPT처럼 하나의 대화 흐름을 session 단위로 관리한다.
+    Agent 대화방 정보를 저장한다.
+
+    chat_type은 프론트에서 전달받지 않는다.
+    Router가 판단한 intent를 기준으로 백엔드에서 결정한다.
     """
 
     __tablename__ = "agent_chat_sessions"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    __table_args__ = (
+        Index(
+            "ix_agent_chat_sessions_user_updated",
+            "user_id",
+            "updated_at",
+        ),
+    )
+
+    id = Column(
+        BigInteger,
+        primary_key=True,
+        autoincrement=True,
+    )
 
     user_id = Column(
         BigInteger,
@@ -28,16 +43,28 @@ class AgentChatSession(Base):
         index=True,
     )
 
-    # 대화방 제목
-    title = Column(String(255), nullable=True)
+    title = Column(
+        String(255),
+        nullable=True,
+    )
 
-    # consumption | finance | stock | mixed 등
-    chat_type = Column(String(30), nullable=False, default="consumption")
+    # general | consumption | finance | stock | mixed
+    chat_type = Column(
+        String(30),
+        nullable=False,
+        default="general",
+        server_default="general",
+    )
 
-    created_at = Column(DateTime, server_default=func.now())
+    created_at = Column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
+    )
 
     updated_at = Column(
         DateTime,
+        nullable=False,
         server_default=func.now(),
         onupdate=func.now(),
     )
@@ -45,13 +72,24 @@ class AgentChatSession(Base):
 
 class AgentChatMessage(Base):
     """
-    Agent 대화방 안의 개별 메시지를 저장하는 모델.
-    user / assistant 메시지를 각각 한 row로 저장한다.
+    Agent 대화방 안의 개별 메시지를 저장한다.
     """
 
     __tablename__ = "agent_chat_messages"
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    __table_args__ = (
+        Index(
+            "ix_agent_chat_messages_session_created",
+            "session_id",
+            "created_at",
+        ),
+    )
+
+    id = Column(
+        BigInteger,
+        primary_key=True,
+        autoincrement=True,
+    )
 
     session_id = Column(
         BigInteger,
@@ -68,25 +106,44 @@ class AgentChatMessage(Base):
     )
 
     # user | assistant | system | tool
-    role = Column(String(20), nullable=False)
+    role = Column(
+        String(20),
+        nullable=False,
+    )
 
-    # 실제 메시지 내용
-    content = Column(Text, nullable=False)
+    content = Column(
+        Text,
+        nullable=False,
+    )
 
-    # spending_summary | spending_rag | unknown 등
-    intent = Column(String(50), nullable=True)
+    # Router가 판단한 action
+    intent = Column(
+        String(50),
+        nullable=True,
+    )
 
-    # 사용한 tool 목록을 JSON 문자열 형태로 저장
-    used_tools = Column(Text, nullable=True)
+    # 사용된 Tool 이름을 JSON 문자열로 저장
+    used_tools = Column(
+        Text,
+        nullable=True,
+    )
 
-    # 참고한 월별 소비 요약 데이터
+    # 소비 분석 답변이 참고한 월별 요약 ID
+    # 백엔드 내부 추적용으로 유지한다.
     referenced_summary_id = Column(
         BigInteger,
         ForeignKey("monthly_spending_summaries.id"),
         nullable=True,
     )
 
-    # 금융/투자 유의 문구
-    disclaimer = Column(Text, nullable=True)
+    # 투자 및 금융상품 관련 유의 문구
+    disclaimer = Column(
+        Text,
+        nullable=True,
+    )
 
-    created_at = Column(DateTime, server_default=func.now())
+    created_at = Column(
+        DateTime,
+        nullable=False,
+        server_default=func.now(),
+    )

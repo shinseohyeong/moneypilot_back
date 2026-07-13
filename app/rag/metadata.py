@@ -1,6 +1,4 @@
-# app/rag/metadata.py
-
-RAG_COLLECTION_NAME = "finance_agent_rag"
+RAG_COLLECTION_NAME = "finance_agent_rag_bge_m3_v1"
 CHROMA_DB_PATH = "./chroma_db"
 
 
