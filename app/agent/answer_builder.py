@@ -128,6 +128,84 @@ def build_rule_based_answer(
             )
 
         return "\n".join(lines)
+    
+    if action == "stock_price":
+        stocks = data.get("stocks", [])
+
+        if not stocks:
+            return None
+
+        lines = [
+            "관심종목의 최근 시세를 알려드릴게요.",
+            "",
+        ]
+
+        for stock in stocks:
+            stock_name = (
+                stock.get("stock_name")
+                or "종목명 없음"
+            )
+            stock_code = (
+                stock.get("stock_code")
+                or "-"
+            )
+
+            lines.append(
+                f"[{stock_name}({stock_code})]"
+            )
+
+            if not stock.get("has_price_data"):
+                lines.append(
+                    "- 최신 시세 데이터가 없습니다."
+                )
+                lines.append("")
+                continue
+
+            price_date = (
+                stock.get("price_date")
+                or "기준일 미확인"
+            )
+            close_price = stock.get(
+                "close_price"
+            )
+            previous_close = stock.get(
+                "previous_close"
+            )
+            change_rate = stock.get(
+                "change_rate"
+            )
+            volume = stock.get("volume")
+
+            lines.append(
+                f"- 기준일: {price_date}"
+            )
+
+            if close_price is not None:
+                lines.append(
+                    f"- 종가: {format_won(close_price)}"
+                )
+
+            if previous_close is not None:
+                lines.append(
+                    f"- 전일 종가: "
+                    f"{format_won(previous_close)}"
+                )
+
+            if change_rate is not None:
+                lines.append(
+                    f"- 등락률: "
+                    f"{to_float(change_rate):.2f}%"
+                )
+
+            if volume is not None:
+                lines.append(
+                    f"- 거래량: "
+                    f"{int(to_float(volume)):,}주"
+                )
+
+            lines.append("")
+
+        return "\n".join(lines).strip()
 
     return None
 

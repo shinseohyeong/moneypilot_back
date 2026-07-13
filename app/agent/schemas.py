@@ -8,6 +8,7 @@ AgentAction = Literal[
     "spending_summary",
     "spending_category",
     "spending_report",
+    "stock_price",
     "agent_chat_rag",
     "general",
 ]

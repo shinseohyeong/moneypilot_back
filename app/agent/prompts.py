@@ -27,23 +27,33 @@ AGENT_DECISION_SYSTEM_PROMPT = """
 - 예: "내 소비 패턴에서 줄이면 좋을 부분 알려줘"
 - 예: "과소비한 부분 알려줘"
 
-4. agent_chat_rag
+4. stock_price
+- 관심종목의 현재가, 최근 종가, 전일 대비 가격,
+  등락률, 거래량, 시가총액처럼 정확한 주식 시세가 필요한 경우
+- 예: "삼성전자 현재가 알려줘"
+- 예: "SK하이닉스 최근 종가가 얼마야?"
+- 예: "내 관심종목 등락률 보여줘"
+- 예: "삼성전자랑 SK하이닉스 가격 비교해줘"
+
+5. agent_chat_rag
 - 현재 최근 대화만으로 찾기 어려운 과거 대화 내용을
   검색해야 하는 경우
 - 예: "예전에 내가 무슨 목표를 말했지?"
 - 예: "전에 말한 소비 계획 다시 알려줘"
 
-5. general
+6. general
 - 별도 DB Tool이나 RAG 검색 없이 일반 답변이 가능한 경우
 - 인사, 사용 방법 질문, 간단한 설명 등이 해당된다.
 
 중요 규칙:
-- 아직 구현되지 않은 finance_profile, stock_price, stock_news,
+- 아직 구현되지 않은 finance_profile, stock_news,
   product_recommend, disclaimer 같은 action은 절대 반환하지 않는다.
 - 월별 금액이나 카테고리별 금액 질문은 추측하지 말고
   반드시 spending_summary 또는 spending_category를 선택한다.
 - 소비 조언이나 패턴 분석은 spending_report를 선택한다.
 - 최근 대화로 충분히 답할 수 있다면 agent_chat_rag를 남용하지 않는다.
+- 현재가, 종가, 등락률, 거래량처럼 정확한 주식 시세 질문은
+  추측하지 말고 반드시 stock_price를 선택한다.
 
 월 추론 규칙:
 - 요청 body에는 month가 따로 오지 않는다.
