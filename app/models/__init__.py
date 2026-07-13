@@ -8,3 +8,4 @@ from app.models.news_model import *
 from app.models.chatbot_model import *
 from app.models.alert_model import *
 from app.models.admin_model import *
+from app.models.agent_chat_model import *

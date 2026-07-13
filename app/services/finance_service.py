@@ -13,14 +13,14 @@ from sqlalchemy.orm import Session
 from app.models.user_model import FinanceProfile
 from app.schemas.finance_profile import FinanceProfileCreate, FinanceProfileUpdate
 
-from app.rag.rag_service import RagService
+# from app.rag.rag_service import RagService
 from app.rag.builders.finance_profile_builder import build_finance_profile_documents
 
 logger = logging.getLogger(__name__)
 
 MONTHS_PER_YEAR = 12
 
-rag_service = RagService()
+# rag_service = RagService()
 
 
 def _get_profile_or_404(db: Session, user_id: int) -> FinanceProfile:
