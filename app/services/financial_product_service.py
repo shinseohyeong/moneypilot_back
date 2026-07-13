@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session, selectinload
 from app.models.financial_product_model import DepositProduct, DepositProductRate, SavingProduct, SavingProductRate, InsuranceProduct
-from app.clients.financial_product_client import fetch_deposit_products, fetch_saving_products
+from app.clients.financial_product_client import fetch_deposit_products, fetch_saving_products, fetch_insurance_products
 from app.repositories.financial_product_repository import (
     get_deposit_products, get_saving_products, get_insurance_products
 )
@@ -143,7 +143,45 @@ def sync_saving_products(db: Session):
     }
 
 def sync_insurance_products(db: Session):
-    
+    data = fetch_insurance_products()   # API 호출
+
+    insurance_list = data["result"]["items"]
+
+    for product in insurance_list:
+        insurance_product = (
+            db.query(InsuranceProduct)
+            .filter(
+                InsuranceProduct.company_code == product["cmpyCd"],
+                InsuranceProduct.insurance_name == product["prdNm"],
+            )
+            .first()
+        )
+
+        # 없으면 추가
+        if insurance_product is None:
+            insurance_product = InsuranceProduct(
+                company_code=product["cmpyCd"],
+                company_name=product["cmpyNm"],
+                insurance_name=product["prdNm"],
+                insurance_type=product["ptrn"],
+                description=product["mog"],
+            )
+
+            db.add(insurance_product)
+
+        # 있으면 수정
+        else:
+            insurance_product.company_name = product["cmpyNm"]
+            insurance_product.insurance_name = product["prdNm"]
+            insurance_product.insurance_type = product["ptrn"]
+            insurance_product.description = product["mog"]
+
+    db.commit() # 저장
+
+    return {
+        "message": "보험 상품이 성공적으로 동기화되었습니다."
+    }
+
 
 def recommend_deposit_products(
     db: Session,

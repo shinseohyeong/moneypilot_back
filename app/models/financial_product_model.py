@@ -232,6 +232,9 @@ class InsuranceProduct(Base):
     # 보험 상품 ID
     id = Column(BigInteger, primary_key=True, autoincrement=True)
 
+    # 보험사 코드
+    company_code = Column(String(20), nullable=True)
+
     # 보험사
     company_name = Column(String(100), nullable=False)
 
