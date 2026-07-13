@@ -7,6 +7,7 @@
 
 from fastapi import APIRouter, Depends, Path, Query
 from sqlalchemy.orm import Session
+from typing import Literal
 
 from app.core.database import get_db
 from app.schemas.news_schema import (
@@ -42,6 +43,7 @@ from app.services.news_sentiment_service import NewsSentimentService
 
 
 router = APIRouter(prefix="/api/v1", tags=["News"])
+NewsSortType = Literal["default", "latest", "oldest", "relevance"]
 
 
 def get_news_service(db: Session = Depends(get_db)) -> NewsService:
@@ -102,12 +104,24 @@ def collect_economy_news(
 )
 def get_economy_news(
     limit: int = Query(default=20, ge=1, le=100),
+    sort: NewsSortType = Query(
+        default="latest",
+        description="뉴스 정렬 기준: default, latest, oldest, relevance",
+    ),
     service: NewsService = Depends(get_news_service),
 ):
     """
-    DB에 저장된 경제 뉴스를 최신순으로 조회합니다.
+    DB에 저장된 경제 뉴스를 조회합니다.
+
+    - latest: 최신순
+    - oldest: 오래된순
+    - default: 기본순, 현재는 최신순과 동일
+    - relevance: 경제 뉴스에서는 현재 latest와 동일하게 처리
     """
-    return service.get_economy_news(limit=limit)
+    return service.get_economy_news(
+        limit=limit,
+        sort=sort,
+    )
 
 
 @router.post(
@@ -139,14 +153,21 @@ def collect_stock_news(
 def get_stock_news(
     stock_id: int = Path(..., ge=1),
     limit: int = Query(default=20, ge=1, le=100),
+    sort: NewsSortType = Query(default="latest"),
     service: NewsService = Depends(get_news_service),
 ):
     """
-    DB에 저장된 특정 종목 뉴스를 최신순으로 조회합니다.
+    DB에 저장된 특정 종목 뉴스를 조회합니다.
+
+    - latest: 최신순
+    - oldest: 오래된순
+    - relevance: 제목/설명에 종목명이 포함된 뉴스를 우선
+    - default: 기본순, 현재는 최신순과 동일
     """
     return service.get_stock_news(
         stock_id=stock_id,
         limit=limit,
+        sort=sort,
     )
 
 @router.post(

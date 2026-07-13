@@ -25,25 +25,35 @@ class StockService:
         self.db = db
         self.repository = StockRepository(db)
 
-    def search_stocks(self, keyword: str, market: Optional[str] = None, limit: int = 20) -> StockSearchResponse:
+    def search_stocks(
+        self,
+        keyword: str,
+        market: str | None = None,
+        limit: int = 20,
+    ) -> StockSearchResponse:
+        """
+        종목명 또는 종목코드로 국내 주식을 검색합니다.
+        """
         stocks = self.repository.search_stocks(
             keyword=keyword,
             market=market,
             limit=limit,
         )
 
+        items = [
+            StockSearchItem(
+                stock_id=stock.id,
+                stock_code=stock.stock_code,
+                stock_name=stock.stock_name,
+                market=stock.market,
+            )
+            for stock in stocks
+        ]
+
         return StockSearchResponse(
-            items=[
-                StockSearchItem(
-                    stock_id=stock.id,
-                    stock_code=stock.stock_code,
-                    stock_name=stock.stock_name,
-                    market=stock.market,
-                    representative_sector=stock.representative_sector,
-                    industry=stock.industry,
-                )
-                for stock in stocks
-            ]
+            keyword=keyword,
+            count=len(items),
+            items=items,
         )
     
     def get_stock_detail(self, stock_id: int) -> StockDetailResponse:

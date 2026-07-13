@@ -17,7 +17,6 @@ from app.routers import stock_rag_router
 from app.routers import youtube_router
 from app.routers import agent_router
 
-from app.routers.finance_profile_router import router as finance_profile_router
 from app.routers.news_admin_router import router as news_admin_router
 
 
@@ -26,8 +25,6 @@ app = FastAPI(
     description="MoneyPilot FastAPI Backend",
     version="1.0.0",
 )
-
-app.include_router(finance_profile_router)
 
 app.add_middleware(
     CORSMiddleware,
