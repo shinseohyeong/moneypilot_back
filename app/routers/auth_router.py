@@ -1,3 +1,4 @@
+import os
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
@@ -53,12 +54,19 @@ def oauth_login(provider: str) -> OAuthLoginURLResponse:
     return OAuthLoginURLResponse(login_url=login_url)
 
 
-@router.get("/{provider}/callback", response_model=OAuthTokenResponse,
-            summary="소셜 로그인 콜백")
-def oauth_callback(provider: str, code: str, db: Session = Depends(get_db)) -> OAuthTokenResponse:
+@router.get("/{provider}/callback", summary="소셜 로그인 콜백")
+def oauth_callback(provider: str, code: str, db: Session = Depends(get_db)):
     """
-    소셜 인증 후 code를 받아 처리한다.
-    code → 소셜 토큰 → 유저 정보 → 우리 유저 생성/조회 → 우리 JWT 발급.
+    소셜 인증 후 code를 받아 처리하고, 토큰과 함께 프론트로 리다이렉트한다.
     """
     result = oauth_service.process_callback(db, provider, code)
-    return OAuthTokenResponse(**result)
+
+    # 프론트 콜백 페이지로 리다이렉트 (토큰 포함)
+    front_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    redirect_url = (
+        f"{front_url}/auth/callback"
+        f"?access_token={result['access_token']}"
+        f"&refresh_token={result['refresh_token']}"
+        f"&is_new_user={str(result['is_new_user']).lower()}"
+    )
+    return RedirectResponse(url=redirect_url)

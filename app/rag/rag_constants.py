@@ -29,6 +29,7 @@ class RagDomain:
   SPENDING = "spending"
   STOCK = "stock"
   FINANCIAL_PRODUCT = "financial_product"
+  USER_PROFILE = "user_profile"
 
 
 class RagFeature:
@@ -43,6 +44,7 @@ class RagFeature:
   ANALYSIS_REPORT = "analysis_report"
   STOCK_NEWS = "stock_news"
   FINANCIAL_PRODUCT = "financial_product"
+  FINANCE_PROFILE = "finance_profile"
 
 
 class RagSourceTable:
@@ -52,4 +54,5 @@ class RagSourceTable:
   source_table과 source_id를 metadata에 넣어두는 게 좋음
   """
   ANALYSIS_REPORTS = "analysis_reports"
+  FINANCE_PROFILES = "finance_profiles"
   
