@@ -15,6 +15,7 @@ from app.routers import transaction_router
 from app.routers import user_router
 from app.routers import stock_rag_router
 from app.routers import youtube_router
+from app.routers import agent_router
 
 from app.routers.news_admin_router import router as news_admin_router
 
@@ -55,3 +56,4 @@ app.include_router(transaction_router.router, prefix="/api/transactions", tags=[
 app.include_router(user_router.router, prefix="/api/users",  tags=["Users"])
 app.include_router(stock_rag_router.router, prefix="/api/rag", tags=["RAG"],)
 app.include_router(youtube_router.router, prefix="/api/youtube", tags=["YouTube"],)
+app.include_router(agent_router.router, prefix="/api/agent", tags=["agent"],)
