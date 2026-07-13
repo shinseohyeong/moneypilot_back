@@ -264,3 +264,7 @@ class InsuranceProduct(Base):
         server_default=func.now(),
         onupdate=func.now(),
     )
+
+    age = Column(String(50), nullable=True)
+    male_insurance_rate = Column(String(50), nullable=True)
+    female_insurance_rate = Column(String(50), nullable=True)
