@@ -6,7 +6,6 @@
 # ============================================================
 
 import json
-from typing import Any
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
@@ -49,14 +48,15 @@ class StockChatbotService:
     def ask_stock_chatbot(
         self,
         request: StockChatbotRequest,
+        user_id: int,
     ) -> StockChatbotResponse:
         """
-        질문 의도를 분류하고, 필요한 관심종목 데이터로 답변합니다.
+        JWT로 인증된 사용자의 질문 의도를 분류하고,
+        필요한 관심종목 데이터로 답변합니다.
 
         새 질문이면 대화방을 생성하고,
         conversation_id가 있으면 기존 대화방에 메시지를 추가합니다.
         """
-        user_id = request.user_id
         disclaimer = get_investment_disclaimer()
 
         risk_type = self.user_risk_context_service.get_user_risk_type(
@@ -81,6 +81,7 @@ class StockChatbotService:
 
         conversation = self._get_or_create_conversation(
             request=request,
+            user_id=user_id,
         )
 
         # 주식·뉴스 담당 범위를 벗어난 질문
@@ -126,15 +127,13 @@ class StockChatbotService:
 
             saved_message = self._save_chatbot_message(
                 conversation_id=conversation.id,
+                user_id=user_id,
                 request=request,
                 answer=answer,
                 items=[],
                 disclaimer=disclaimer,
-                answer_source="rule_fallback",
-                used_tools=[
-                    "user_risk_context",
-                    "watchlist",
-                ],
+                answer_source="scope_guide",
+                used_tools=[],
                 intent_result=intent_result,
             )
 
@@ -245,11 +244,16 @@ class StockChatbotService:
     def _get_or_create_conversation(
         self,
         request: StockChatbotRequest,
+        user_id: int,
     ):
+        """
+        인증된 사용자의 기존 대화방을 조회하거나
+        첫 질문을 기준으로 새 대화방을 생성합니다.
+        """
         if request.conversation_id is not None:
             conversation = self.repository.get_conversation(
                 conversation_id=request.conversation_id,
-                user_id=request.user_id,
+                user_id=user_id,
             )
 
             if conversation is None:
@@ -265,7 +269,7 @@ class StockChatbotService:
         )
 
         return self.repository.create_conversation(
-            user_id=request.user_id,
+            user_id=user_id,
             chat_type="stock",
             title=title,
         )
@@ -417,6 +421,7 @@ class StockChatbotService:
     def _save_chatbot_message(
         self,
         conversation_id: int,
+        user_id: int,
         request: StockChatbotRequest,
         answer: str,
         items: list[StockChatbotStockBrief],
@@ -450,7 +455,7 @@ class StockChatbotService:
         try:
             saved_message = self.repository.create_chatbot_message(
                 conversation_id=conversation_id,
-                user_id=request.user_id,
+                user_id=user_id,
                 chat_type="stock",
                 user_message=request.message,
                 agent_response=answer,
@@ -464,7 +469,7 @@ class StockChatbotService:
 
             conversation = self.repository.get_conversation(
                 conversation_id=conversation_id,
-                user_id=request.user_id,
+                user_id=user_id,
             )
 
             if conversation is not None:
