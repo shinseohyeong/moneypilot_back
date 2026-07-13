@@ -196,3 +196,4 @@ CLAUDE.md
 # RAG / vectordb / chromadb
 # ==========================================
 chroma_db/
+storage/
