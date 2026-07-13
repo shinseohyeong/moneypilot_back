@@ -12,104 +12,208 @@ from datetime import date
 from sqlalchemy import func
 
 from app.models.user_model import User
-from app.models import (TokenUsageLog, TokenLimitSetting)
+from app.models.card_statement_model import CardStatement
+from app.models.transaction_model import Transaction
+from app.models.admin_model import (TokenUsageLog, TokenLimitSetting)
+from app.models.financial_product_model import (DepositProduct, SavingProduct, InsuranceProduct)
 
 class AdminRepository:
     def __init__(self, db):
         self.db = db
-        
-    # ======================================
-    # token_usage_logs 테이블 조회
-    # ======================================
-    def get_usage_list(self):
-        return self.db.query(TokenUsageLog).order_by(TokenUsageLog.created_at.desc()).all()
-      
-    # ======================================
-    # token_usage_logs 테이블에서 특정 사용자 조회
-    # ======================================
-    def get_user_usage(self, user_id: int):
-        return (
-        self.db.query(TokenUsageLog)
-        .filter(TokenUsageLog.user_id == user_id)
-        .order_by(TokenUsageLog.created_at.desc())
-        .all()
-    )
-      
-    # ======================================
-    # 사용량 제한 설정
-    # ======================================
-    def get_token_limit(self):
-        return self.db.query(TokenLimitSetting).first()
     
-    # ======================================
-    # 사용량 제한 변경
-    # ======================================
-    def update_token_limit(self, daily_token_limit: int):
-        limit_setting = self.db.query(TokenLimitSetting).first()
-        if limit_setting:
-            limit_setting.daily_token_limit = (daily_token_limit)
-        else:
-            limit_setting = TokenLimitSetting(daily_token_limit=daily_token_limit)
-            self.db.add(limit_setting)
-        self.db.flush()
-        return limit_setting
-    
-    # ======================================
-    # 전체 사용자 수
-    # ======================================
+    # ==========================================
+    # 전체 회원 수
+    # ==========================================
     def count_users(self):
+        return self.db.query(func.count(User.id)).scalar() or 0
+    
+    # 오늘 사용 토큰량
+    def get_today_token_sum(self):
+        today = date.today()
+        result = (
+            self.db.query(func.sum(TokenUsageLog.total_tokens))
+            .filter(TokenUsageLog.usage_date == today)
+            .scalar()
+        )
+
+        return result or 0
+    
+    # 오늘 사용된 비용
+    def get_today_cost(self):
+        today = date.today()
+        result = (
+            self.db.query(
+                func.sum(TokenUsageLog.estimated_cost)
+            )
+            .filter(TokenUsageLog.usage_date == today)
+            .scalar()
+        )
+
+        return result or 0
+    
+    # 이번달 비용
+    def get_monthly_cost(self):
+        month = date.today().strftime("%Y-%m")
+        result = (
+            self.db.query(
+                func.sum(TokenUsageLog.estimated_cost)
+            )
+            .filter(
+                func.date_format(
+                    TokenUsageLog.usage_date,
+                    "%Y-%m"
+                ) == month
+            )
+            .scalar()
+        )
+
+        return result or 0
+    
+    # 총 비용
+    def get_total_cost(self):
+        result = (
+            self.db.query(
+                func.sum(TokenUsageLog.estimated_cost)
+            )
+            .scalar()
+        )
+
+        return result or 0
+    
+    # 명세서 개수
+    def count_statements(self):
+        return self.db.query(CardStatement).count()
+    
+    # OCR 성공
+    def count_completed_statements(self):
         return (
-            self.db.query(User)
+            self.db.query(CardStatement)
+            .filter(
+                CardStatement.status == "COMPLETED"
+            )
             .count()
         )
-
-
-    # ======================================
-    # 오늘 사용된 총 토큰
-    # ======================================
-    def get_today_token_sum(self):
+        
+    # 오늘 거래량
+    def count_today_transactions(self):
+        today = date.today()
+        return (
+            self.db.query(Transaction)
+            .filter(
+                Transaction.transaction_date == today
+            )
+            .count()
+        )
+        
+    # 이번달 거래량
+    def count_month_transactions(self):
+        month = date.today().strftime("%Y-%m")
+        return (
+            self.db.query(Transaction)
+            .filter(
+                Transaction.month == month
+            )
+            .count()
+        )
+        
+    # 사용자 사용량 조회
+    def get_user_token_usage(self):
         return (
             self.db.query(
-                func.coalesce(
-                    func.sum(TokenUsageLog.total_tokens),
-                    0
-                )
+                User.id,
+                User.username,
+                func.sum(TokenUsageLog.total_tokens),
+                func.sum(TokenUsageLog.estimated_cost),
             )
-            .filter(
-                TokenUsageLog.usage_date == date.today()
+            .join(
+                TokenUsageLog,
+                User.id == TokenUsageLog.user_id,
             )
+            .group_by(
+                User.id,
+                User.username,
+            )
+            .all()
+        )
+        
+    # 기능별 토큰 사용량 조회
+    def get_feature_token_usage(self):
+        return (
+            self.db.query(
+                TokenUsageLog.feature_type,
+                func.sum(TokenUsageLog.total_tokens),
+                func.sum(TokenUsageLog.estimated_cost),
+            )
+            .group_by(
+                TokenUsageLog.feature_type
+            )
+            .all()
+        )
+        
+    # 토큰량 제한 설정
+    def update_token_limit(self, limit):
+        setting = (
+            self.db.query(TokenLimitSetting)
+            .first()
+        )
+        if setting is None:
+            setting = TokenLimitSetting(
+                daily_token_limit=limit,
+                is_active=True,
+            )
+            self.db.add(setting)
+        else:
+            setting.daily_token_limit = limit
+
+        self.db.commit()
+        self.db.refresh(setting)
+
+        return setting
+    
+    # 금융상품 마지막 갱신 조회
+    def get_financial_product_last_update(self):
+
+        deposit_updated = (
+            self.db.query(func.max(DepositProduct.updated_at))
             .scalar()
         )
 
-
-    # ======================================
-    # 오늘 발생한 API 비용
-    # ======================================
-    def get_today_cost(self):
-        return (
-            self.db.query(
-                func.coalesce(
-                    func.sum(TokenUsageLog.estimated_cost),
-                    0
-                )
-            )
-            .filter(
-                TokenUsageLog.usage_date == date.today()
-            )
+        saving_updated = (
+            self.db.query(func.max(SavingProduct.updated_at))
             .scalar()
         )
 
+        insurance_updated = (
+            self.db.query(func.max(InsuranceProduct.updated_at))
+            .scalar()
+        )
 
-    # ======================================
-    # 전체 누적 API 비용
-    # ======================================
-    def get_total_cost(self):
+        return {
+            "deposit_updated_at": deposit_updated,
+            "saving_updated_at": saving_updated,
+            "insurance_updated_at": insurance_updated,
+        }
+    
+    # ==========================================
+    # 일별 비용 조회
+    # ==========================================
+    def get_daily_cost(self):
         return (
             self.db.query(
-                func.coalesce(
-                    func.sum(TokenUsageLog.estimated_cost),
-                    0
-                )
+                TokenUsageLog.usage_date,
+                func.sum(TokenUsageLog.estimated_cost),
             )
-            .scalar()
+            .group_by(TokenUsageLog.usage_date)
+            .order_by(TokenUsageLog.usage_date.desc())
+            .all()
+        )
+        
+    # ==========================================
+    # 토큰 제한 조회
+    # ==========================================
+    def get_token_limit(self):
+        return (
+            self.db.query(TokenLimitSetting)
+            .order_by(TokenLimitSetting.id.desc())
+            .first()
         )

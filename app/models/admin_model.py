@@ -14,7 +14,6 @@ from sqlalchemy import (
 
 from app.core.database import Base
 
-
 class TokenUsageLog(Base):
     __tablename__ = "token_usage_logs"
     # 사용량 기록 id

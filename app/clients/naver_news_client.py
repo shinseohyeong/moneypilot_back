@@ -29,7 +29,7 @@ class NaverNewsClient:
 
     def search_news(
         self,
-        keyword: str,
+        query: str,
         display: int = 10,
         start: int = 1,
         sort: str = "date",
@@ -37,9 +37,10 @@ class NaverNewsClient:
         """
         네이버 뉴스 검색 API를 호출합니다.
 
-        sort:
-        - date: 날짜순
-        - sim: 정확도순
+        query: 검색어
+        display: 가져올 뉴스 개수
+        start: 검색 시작 위치
+        sort: date 또는 sim
         """
         headers = {
             "X-Naver-Client-Id": self.client_id,
@@ -47,7 +48,7 @@ class NaverNewsClient:
         }
 
         params = {
-            "query": keyword,
+            "query": query,
             "display": display,
             "start": start,
             "sort": sort,

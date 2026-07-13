@@ -25,7 +25,12 @@ class TransactionCreate(BaseModel):
     # 스타벅스
     # 수기:
     # 친구 정산
-    merchant_name: str
+    merchant_name: str = Field(
+        ...,
+        min_length=1,
+        max_length=100,
+        description="가맹점명"
+    )
 
     # 상세 설명
     # 예:
@@ -33,12 +38,19 @@ class TransactionCreate(BaseModel):
     description: Optional[str] = None
 
     # 금액
-    amount: Decimal
+    amount: Decimal = Field(
+        ...,
+        gt=0,
+        description="거래 금액"
+    )
 
     # 소비 카테고리
     # 식비
     # 쇼핑
-    category: Optional[str] = None
+    category: Optional[str] = Field(
+        default=None,
+        max_length=30
+    )
 
     # 반복 결제 여부
     # OTT 같은 구독 서비스
@@ -70,13 +82,25 @@ class TransactionResponse(BaseModel):
     # 2026-06 형태
     month:str
     # 가맹점명
-    merchant_name:str
+    merchant_name:str = Field(
+        ...,
+        min_length=1,
+        max_length=100,
+        description="가맹점명"
+    )
     # 설명
     description:Optional[str]
     # 가격
-    amount:Decimal
+    amount:Decimal = Field(
+        ...,
+        gt=0,
+        description="거래 금액"
+    )
     # 소비 카테고리
-    category:Optional[str]
+    category:Optional[str] = Field(
+        default=None,
+        max_length=30
+    )
     # 반복 결제 여부
     is_recurring:bool
     # 고정비/ 변동비
