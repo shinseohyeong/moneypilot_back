@@ -104,8 +104,16 @@ def get_saving_products(
     return products
 
 
-def get_insurance_products(db: Session):
+def get_insurance_products(
+    db: Session,
+    company_code,
+    insurance_name
+):
     return (
         db.query(InsuranceProduct)
-        .all()
+        .filter(
+            InsuranceProduct.company_code == company_code,
+            InsuranceProduct.insurance_name == insurance_name
+        )
+        .first()
     )
