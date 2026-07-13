@@ -14,13 +14,10 @@ from pydantic import BaseModel, Field
 class StockChatbotRequest(BaseModel):
     """
     주식 챗봇 질문 요청 schema입니다.
-    """
 
-    user_id: int = Field(
-        ...,
-        ge=1,
-        description="사용자 ID",
-    )
+    사용자 ID는 요청 본문에서 받지 않고,
+    Authorization 토큰으로 인증된 current_user.id를 사용합니다.
+    """
 
     message: str = Field(
         ...,

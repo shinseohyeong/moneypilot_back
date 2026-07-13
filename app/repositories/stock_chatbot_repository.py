@@ -11,11 +11,9 @@ from typing import Optional
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.models.chatbot_conversation_model import ChatbotConversation
 from app.models.chatbot_model import ChatbotMessage
 from app.repositories.stock_report_repository import StockReportRepository
-from app.models.chatbot_conversation_model import ChatbotConversation
-from app.models.chatbot_model import ChatbotMessage
-from app.models.chatbot_conversation_model import ChatbotConversation
 
 
 class StockChatbotRepository:
