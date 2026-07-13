@@ -26,11 +26,9 @@ class TransactionRepository:
     # ======================================
     def save(
         self,
-        transaction:Transaction
+        transaction: Transaction
     ):
         self.db.add(transaction)
-        self.db.commit()
-        self.db.refresh(transaction)
         return transaction
 
     # ======================================
@@ -41,10 +39,7 @@ class TransactionRepository:
         self,
         transactions:list
     ):
-        self.db.add_all(
-            transactions
-        )
-        self.db.commit()
+        self.db.add_all(transactions)
         return transactions
 
     # ======================================
@@ -53,11 +48,13 @@ class TransactionRepository:
     # ======================================
     def find_all_by_statement(
         self,
-        statement_id:int
+        statement_id:int,
+        user_id: int
     ):
         return (
             self.db.query(Transaction).filter(
-                Transaction.statement_id == statement_id
+                Transaction.statement_id == statement_id,
+                Transaction.user_id == user_id
             ).all()
         )
         
@@ -67,11 +64,13 @@ class TransactionRepository:
     # ======================================
     def find_by_id(
         self,
-        transaction_id:int
+        transaction_id:int,
+        user_id: int
     ):
         return (
             self.db.query(Transaction).filter(
-                Transaction.id == transaction_id
+                Transaction.id == transaction_id,
+                Transaction.user_id == user_id
             ).first()
         )
 
@@ -83,17 +82,49 @@ class TransactionRepository:
         self,
         transaction:Transaction
     ):
-        self.db.commit()
         self.db.refresh(transaction)
+        # refresh는 service에서 하는걸로 변경
         return transaction
 
     # ======================================
     # 거래 삭제
     # DELETE
     # ======================================
-    def delete(
+    def delete_by_statement_id(self, statement_id: int):
+        self.db.query(Transaction).filter(
+            Transaction.statement_id == statement_id
+        ).delete(synchronize_session=False)
+     
+    # ======================================
+    # 월별 조회
+    # ======================================   
+    def find_all_by_month(
         self,
-        transaction:Transaction
+        user_id: int,
+        month: str
     ):
-        self.db.delete(transaction)
-        self.db.commit()
+        return (
+            self.db.query(Transaction)
+            .filter(
+                Transaction.user_id == user_id,
+                Transaction.month == month
+            )
+            .order_by(Transaction.transaction_date)
+            .all()
+        )
+        
+    # 날자별 조회
+    def find_all_by_date(
+        self,
+        user_id: int,
+        transaction_date
+    ):
+        return (
+            self.db.query(Transaction)
+            .filter(
+                Transaction.user_id == user_id,
+                Transaction.transaction_date == transaction_date
+            )
+            .order_by(Transaction.amount)
+            .all()
+        )
