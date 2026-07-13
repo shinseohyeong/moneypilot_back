@@ -148,23 +148,20 @@ def sync_insurance_products(db: Session):
     insurance_list = data["result"]["items"]
 
     for product in insurance_list:
-        insurance_product = (
-            db.query(InsuranceProduct)
-            .filter(
-                InsuranceProduct.company_code == product["cmpyCd"],
-                InsuranceProduct.insurance_name == product["prdNm"],
-            )
-            .first()
+        insurance_product = get_insurance_products(
+            db,
+            product.get("cmpyCd"),
+            product.get("prdNm")
         )
 
         # 없으면 추가
         if insurance_product is None:
             insurance_product = InsuranceProduct(
-                company_code=product["cmpyCd"],
-                company_name=product["cmpyNm"],
-                insurance_name=product["prdNm"],
-                insurance_type=product["ptrn"],
-                description=product["mog"],
+                company_code=product.get("cmpyCd"),
+                company_name=product.get("cmpyNm"),
+                insurance_name=product.get("prdNm"),
+                insurance_type=product.get("ptrn"),
+                description=product.get("mog"),
             )
 
             db.add(insurance_product)
@@ -175,6 +172,9 @@ def sync_insurance_products(db: Session):
             insurance_product.insurance_name = product["prdNm"]
             insurance_product.insurance_type = product["ptrn"]
             insurance_product.description = product["mog"]
+
+        if not product.get("cmpyCd") or not product.get("prdNm"):
+            continue
 
     db.commit() # 저장
 
