@@ -11,6 +11,7 @@ from sqlalchemy import (
 )
 
 from app.core.database import Base
+from sqlalchemy.orm import relationship
 
 
 class DepositProduct(Base):
@@ -43,6 +44,12 @@ class DepositProduct(Base):
         onupdate=func.now(),
     )
 
+    rates = relationship(
+        "DepositProductRate",
+        back_populates="product",
+        cascade="all, delete-orphan",
+    )
+
 
 class SavingProduct(Base):
     __tablename__ = "saving_products"
@@ -72,6 +79,12 @@ class SavingProduct(Base):
         nullable=False,
         server_default=func.now(),
         onupdate=func.now(),
+    )
+
+    rates = relationship(
+        "SavingProductRate",
+        back_populates="product",
+        cascade="all, delete-orphan",
     )
 
 
@@ -115,6 +128,11 @@ class DepositProductRate(Base):
         onupdate=func.now(),
     )
 
+    product = relationship(
+        "DepositProduct",
+        back_populates="rates",
+    )
+
 
 class SavingProductRate(Base):
     __tablename__ = "saving_product_rates"
@@ -156,6 +174,11 @@ class SavingProductRate(Base):
         nullable=False,
         server_default=func.now(),
         onupdate=func.now(),
+    )
+
+    product = relationship(
+        "SavingProduct",
+        back_populates="rates",
     )
 
 
@@ -209,6 +232,12 @@ class InsuranceProduct(Base):
     # 보험 상품 ID
     id = Column(BigInteger, primary_key=True, autoincrement=True)
 
+    # 보험사 코드
+    company_code = Column(
+        String(20),
+        nullable=False,
+    )
+
     # 보험사
     company_name = Column(String(100), nullable=False)
 
@@ -229,56 +258,6 @@ class InsuranceProduct(Base):
     )
 
     # 갱신일
-    updated_at = Column(
-        DateTime,
-        nullable=False,
-        server_default=func.now(),
-        onupdate=func.now(),
-    )
-
-
-class InterestCalculationHistory(Base):
-    __tablename__ = "interest_calculation_histories"
-
-    # 계산 ID
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-
-    # 사용자
-    user_id = Column(
-        BigInteger,
-        ForeignKey("users.id"),
-        nullable=False,
-    )
-
-    # DEPOSIT | SAVING
-    product_type = Column(String(20), nullable=False)
-
-    # 원금
-    principal = Column(BigInteger, nullable=False)
-
-    # 가입 기간
-    period_month = Column(Integer, nullable=False)
-
-    # 적용 금리
-    interest_rate = Column(DECIMAL(5, 2), nullable=False)
-
-    # 세전 이자
-    before_tax_interest = Column(BigInteger, nullable=False)
-
-    # 세후 이자
-    after_tax_interest = Column(BigInteger, nullable=False)
-
-    # 만기 수령액
-    maturity_amount = Column(BigInteger, nullable=False)
-
-    # 생성일
-    created_at = Column(
-        DateTime,
-        nullable=False,
-        server_default=func.now(),
-    )
-
-    # 수정일
     updated_at = Column(
         DateTime,
         nullable=False,
