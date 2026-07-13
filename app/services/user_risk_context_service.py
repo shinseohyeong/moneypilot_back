@@ -9,6 +9,7 @@
 from typing import Optional
 
 from sqlalchemy.orm import Session
+from app.models.user_model import FinanceProfile
 
 
 class UserRiskContextService:
@@ -28,25 +29,18 @@ class UserRiskContextService:
 
     def get_user_risk_type(self, user_id: int) -> str:
         """
-        user_id 기준 사용자 투자성향을 반환합니다.
-
-        현재는 팀원 파트의 사용자/자산 프로필 테이블 구조가 확정되기 전이므로
-        기본값 NORMAL을 반환합니다.
-
-        나중에 finance_profiles, user_profiles, user_settings 등 실제 테이블이 확정되면
-        이 함수 내부에서 DB 조회 로직만 교체하면 됩니다.
+        user_id 기준 사용자 투자성향을 조회해 SAFE / NORMAL / AGGRESSIVE 중 하나로 반환합니다.
         """
-        # TODO:
-        # 팀원 파트 투자성향 컬럼 확정 후 연결
-        # 예시:
-        # profile = self.db.query(FinanceProfile).filter(FinanceProfile.user_id == user_id).first()
-        # return self._normalize_risk_type(profile.risk_type if profile else None)
-        # 추후 확인해야 할 것 :
-        # 투자성향 저장 테이블명
-        # 투자성향 컬럼명
-        # 저장 값 예시: 안전형/보통형/위험형 또는 SAFE/NORMAL/AGGRESSIVE
+        profile = (
+            self.db.query(FinanceProfile)
+            .filter(FinanceProfile.user_id == user_id)
+            .first()
+        )
 
-        return self.DEFAULT_RISK_TYPE
+        if not profile:
+            return self.DEFAULT_RISK_TYPE
+
+        return self._normalize_risk_type(profile.risk_type)
 
     def _normalize_risk_type(self, risk_type: Optional[str]) -> str:
         """

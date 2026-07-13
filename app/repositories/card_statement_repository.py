@@ -14,6 +14,8 @@
 from sqlalchemy.orm import Session
 
 from app.models.card_statement_model import CardStatement
+from app.models.transaction_model import Transaction
+
 class FileRepository:
     def __init__(
         self,
@@ -31,8 +33,7 @@ class FileRepository:
         statement:CardStatement
     ):
         self.db.add(statement)
-        self.db.commit()
-        self.db.refresh(statement)
+        self.db.flush()          # id 생성
         return statement
 
     # ======================================
@@ -59,11 +60,13 @@ class FileRepository:
     # ======================================
     def find_by_id(
         self,
-        statement_id:int
+        statement_id:int,
+        user_id:int
     ):
         return (
             self.db.query(CardStatement).filter(
-                CardStatement.id == statement_id
+                CardStatement.id == statement_id,
+                CardStatement.user_id == user_id
             ).first()
         )
 
@@ -76,4 +79,3 @@ class FileRepository:
         statement:CardStatement
     ):
         self.db.delete(statement)
-        self.db.commit()

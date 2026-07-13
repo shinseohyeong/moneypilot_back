@@ -1,7 +1,7 @@
 # .env 읽기, DB URL, JWT 설정, OAuth 설정
 import os
 from dotenv import load_dotenv
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pathlib import Path
 
 # backend 폴더 기준 .env를 명확히 읽기 위한 설정
@@ -23,7 +23,9 @@ class Settings:
     DB_NAME: str = os.getenv("DB_NAME", "")
     
     OPENAI_API_KEY: str | None = os.getenv("OPENAI_API_KEY")
+    OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
     FINANCE_API_KEY: str = os.getenv("FINANCE_API_KEY", "")
+
 
     # ── JWT (1번 담당 추가) ──────────────────
     SECRET_KEY: str = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")
@@ -63,11 +65,30 @@ class Settings:
     openai_api_key: str = (os.getenv("OPENAI_API_KEY") or "").strip()
     openai_model: str = (os.getenv("OPENAI_MODEL", "gpt-4o-mini") or "").strip()
 
-    # 나중에 Ollama 테스트할 때 사용할 예정
+    # Ollama 설정
     ollama_base_url: str = (
-        os.getenv("OLLAMA_BASE_URL", "http://localhost:11434") or ""
+        os.getenv(
+            "OLLAMA_BASE_URL",
+            "http://localhost:11434",
+        )
+        or "http://localhost:11434"
     ).strip()
-    ollama_model: str = (os.getenv("OLLAMA_MODEL", "llama3.1") or "").strip()
+
+    ollama_llm_model: str = (
+        os.getenv(
+            "OLLAMA_LLM_MODEL",
+            "gemma4:e4b-it-qat",
+        )
+        or "gemma4:e4b-it-qat"
+    ).strip()
+
+    ollama_embedding_model: str = (
+        os.getenv(
+            "OLLAMA_EMBEDDING_MODEL",
+            "bge-m3:latest",
+        )
+        or "bge-m3:latest"
+    ).strip()
 
     # YouTube API
     youtube_api_key: str = (os.getenv("YOUTUBE_API_KEY") or "").strip()
@@ -79,9 +100,9 @@ class Settings:
             f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
             "?charset=utf8mb4"
         )
-
+    
     class Config:
-        env_file = ".env"
+        env_file=".env"
 
 
 settings = Settings()

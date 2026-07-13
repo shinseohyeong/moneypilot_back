@@ -24,6 +24,9 @@ def signup(db: Session, body: SignupRequest) -> User:
         password=hash_password(body.password),
         username=body.username,
         login_type="LOCAL",
+        birth_date=body.birth_date,
+        gender=body.gender,
+        role="USER",
         is_active=True,
     )
     db.add(user)

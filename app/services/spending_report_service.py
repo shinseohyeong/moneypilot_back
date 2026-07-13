@@ -1,4 +1,3 @@
-import re
 from decimal import Decimal
 
 from fastapi import HTTPException, status
@@ -39,6 +38,7 @@ class AnalysisReportService:
     self.spending_service = SpendingService(db)
     self.spending_analysis_service = SpendingAnalysisService(db)
     
+    
   
   def generate_monthly_report(
     self,
@@ -54,8 +54,8 @@ class AnalysisReportService:
     4. 기존 카드별 사용금액 데이터 조회 함수 재사용
     5. LLM에 전달할 report_context 생성
     6. LLM을 호출해 소비 코칭 리포트 생성
-    7. analysis_reports 테이블에 저장하거나 기존 리포트 수정
-    8. 저장된 리포트 반환
+    8. analysis_reports 테이블에 저장하거나 기존 리포트 수정
+    9. 저장된 리포트 반환
     """
     
     self.spending_analysis_service.validate_month_format(month)

@@ -1,12 +1,16 @@
-from app.services.parsers.parser_shinhan import parse_shinhan
-from app.services.parsers.parser_kb import parse_kb
+from parsers.parser_shinhan import parse_shinhan
+from parsers.parser_kb import parse_kb
+
+PARSERS = {
+    "신한카드": parse_shinhan,
+    "국민카드": parse_kb
+}
 
 def parse_excel(df, card_name):
-    if card_name == "신한카드":
-        return parse_shinhan(df)
+    parser = PARSERS.get(card_name)
+    if not parser:
+        raise Exception(
+            "지원하지 않는 카드사"
+        )
 
-    elif card_name == "국민카드":
-        return parse_kb(df)
-
-    else:
-        raise Exception("지원하지 않는 카드사")
+    return parser(df)
