@@ -13,15 +13,13 @@ from sqlalchemy.orm import Session
 from app.models.user_model import FinanceProfile
 from app.schemas.finance_profile import FinanceProfileCreate, FinanceProfileUpdate
 
-# from app.rag.rag_service import RagService
+from app.rag.rag_service import upsert_rag_document
+from app.rag.rag_constants import RagDomain, RagSourceTable
 from app.rag.builders.finance_profile_builder import build_finance_profile_documents
 
 logger = logging.getLogger(__name__)
 
 MONTHS_PER_YEAR = 12
-
-# rag_service = RagService()
-
 
 def _get_profile_or_404(db: Session, user_id: int) -> FinanceProfile:
     profile = db.query(FinanceProfile).filter(
@@ -70,7 +68,16 @@ def create_profile(db: Session, user_id: int, body: FinanceProfileCreate) -> Fin
     # mp_rag_001 — 금융 프로필 RAG 저장
     try:
         documents = build_finance_profile_documents(profile)
-        rag_service.upsert_documents(documents)
+        for doc in documents :
+            upsert_rag_document(
+                user_id=profile.user_id,
+                domain=RagDomain.USER_PROFILE,
+                source_type=RagSourceTable.FINANCE_PROFILES,
+                source_id=profile.user_id,
+                document_key=doc["id"],
+                content=doc["content"],
+                metadata=doc["metadata"],
+            )
         logger.info(f"금융 프로필 RAG 저장 완료 — user_id={user_id}")
     except Exception as e:
         logger.error(f"금융 프로필 RAG 저장 실패 — user_id={user_id}: {e}")
@@ -101,7 +108,16 @@ def update_profile(db: Session, user_id: int, body: FinanceProfileUpdate) -> Fin
     # mp_rag_001 — 수정 시 RAG 재저장 (upsert라 덮어씀)
     try:
         documents = build_finance_profile_documents(profile)
-        rag_service.upsert_documents(documents)
+        for doc in documents:
+            upsert_rag_document(
+                user_id=profile.user_id,
+                domain=RagDomain.USER_PROFILE,
+                source_type=RagSourceTable.FINANCE_PROFILES,
+                source_id=profile.user_id,
+                document_key=doc["id"],
+                content=doc["content"],
+                metadata=doc["metadata"],
+            )
         logger.info(f"금융 프로필 RAG 재저장 완료 — user_id={user_id}")
     except Exception as e:
         logger.error(f"금융 프로필 RAG 재저장 실패 — user_id={user_id}: {e}")
