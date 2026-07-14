@@ -145,9 +145,20 @@ def sync_saving_products(db: Session):
 def sync_insurance_products(db: Session):
     data = fetch_insurance_products()   # API 호출
 
-    insurance_list = data["result"]["items"]
+    insurance_list = (
+        db.query(InsuranceProduct)
+        .filter(
+            InsuranceProduct.company_code == product.get("cmpyCd"),
+            InsuranceProduct.insurance_name == product.get("prdNm"),
+        )
+        .first()
+    )
 
     for product in insurance_list:
+
+        if not product.get("cmpyCd") or not product.get("prdNm"):
+            continue
+
         insurance_product = get_insurance_products(
             db,
             product.get("cmpyCd"),
@@ -162,19 +173,23 @@ def sync_insurance_products(db: Session):
                 insurance_name=product.get("prdNm"),
                 insurance_type=product.get("ptrn"),
                 description=product.get("mog"),
+                age=product.get("age"),
+                male_insurance_rate=product.get("mlInsRt"),
+                female_insurance_rate=product.get("fmlInsRt"),
             )
 
             db.add(insurance_product)
 
         # 있으면 수정
         else:
-            insurance_product.company_name = product["cmpyNm"]
-            insurance_product.insurance_name = product["prdNm"]
-            insurance_product.insurance_type = product["ptrn"]
-            insurance_product.description = product["mog"]
+            insurance_product.company_name = product.get("cmpyNm")
+            insurance_product.insurance_name = product.get("prdNm")
+            insurance_product.insurance_type = product.get("ptrn")
+            insurance_product.description = product.get("mog")
+            insurance_product.age = product.get("age")
+            insurance_product.male_insurance_rate = product.get("mlInsRt")
+            insurance_product.female_insurance_rate = product.get("fmlInsRt")
 
-        if not product.get("cmpyCd") or not product.get("prdNm"):
-            continue
 
     db.commit() # 저장
 
@@ -350,3 +365,35 @@ def recommend_saving_products(
             "maturity_amount": item["maturity_amount"],
         })
     return result
+
+
+def recommend_insurance_products(
+    db: Session,
+    gender: str | None = None,
+    insurance_type: str | None = None,
+    company_code: str | None = None,
+    limit: int = 5,
+):
+    products = get_insurance_products(
+        db=db,
+        company_code=company_code,
+        insurance_type=insurance_type,
+    )
+
+    # 성별 기준 보험료 오름차순 정렬
+    if gender == "남자":
+        products.sort(
+            key=lambda x: int(
+                x.male_insurance_rate or 999
+            )
+        )
+
+    elif gender == "여자":
+        products.sort(
+            key=lambda x: int(
+                x.female_insurance_rate or 999
+            )
+        )
+
+    # 상위 10개 추천
+    return products[:limit]

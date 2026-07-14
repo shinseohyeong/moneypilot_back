@@ -3,7 +3,10 @@ from app.core.config import settings
 
 DEPOSIT_API_URL = "http://finlife.fss.or.kr/finlifeapi/depositProductsSearch.json"
 SAVING_API_URL = "http://finlife.fss.or.kr/finlifeapi/savingProductsSearch.json"
-INSURANCE_API_URL = "http://apis.data.go.kr/1160100/service/GetMedicalReimbursementInsuranceInfoService.json"
+INSURANCE_API_URL = (
+    "https://apis.data.go.kr/1160100/service/"
+    "GetMedicalReimbursementInsuranceInfoService/getInsuranceInfo"
+)
 
 def fetch_deposit_products():
     params = {
@@ -47,16 +50,15 @@ def fetch_saving_products():
     return data
 
 def fetch_insurance_products():
-    url = settings.INSURANCE_API_URL
-    
     params = {
         "serviceKey": settings.PUBLIC_DATA_API_KEY,
         "pageNo": 1,
         "numOfRows": 1000,
+        "resultType": "json",
     }
 
     response = requests.get(
-        url,
+        INSURANCE_API_URL,
         params=params,
     )
 

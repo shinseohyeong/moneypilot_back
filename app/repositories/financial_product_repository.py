@@ -104,16 +104,24 @@ def get_saving_products(
     return products
 
 
+# 동기화용
 def get_insurance_products(
     db: Session,
-    company_code,
-    insurance_name
+    insurance_type: str | None = None,
+    company_code: str | None = None
 ):
-    return (
-        db.query(InsuranceProduct)
-        .filter(
-            InsuranceProduct.company_code == company_code,
-            InsuranceProduct.insurance_name == insurance_name
+    query = db.query(InsuranceProduct)
+
+    if insurance_type:
+        query = query.filter(
+            InsuranceProduct.insurance_type.contains(
+                insurance_type
+            )
         )
-        .first()
-    )
+
+    if company_code:
+        query = query.filter(
+            InsuranceProduct.company_code == company_code
+        )
+
+    return query.all()

@@ -63,3 +63,30 @@ class SavingRecommendResponse(BaseModel):
     maturity_amount: int
     before_tax_interest: int
     after_tax_interest: int
+
+
+class InsuranceProductResponse(BaseModel):
+    id: int
+    company_code: str
+    company_name: str
+    insurance_name: str
+    insurance_type: str | None
+    description: str | None
+    age: str | None
+    male_insurance_rate: str | None
+    female_insurance_rate: str | None
+
+    class Config:
+        from_attributes = True
+
+
+class InsuranceRecommendResponse(BaseModel):
+    id: int
+    company_name: str
+    insurance_name: str
+    insurance_type: str | None
+    male_insurance_rate: str | None
+    female_insurance_rate: str | None
+
+    class Config:
+        from_attributes = True
