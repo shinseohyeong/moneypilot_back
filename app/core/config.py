@@ -25,6 +25,7 @@ class Settings:
     OPENAI_API_KEY: str | None = os.getenv("OPENAI_API_KEY")
     OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
     FINANCE_API_KEY: str = os.getenv("FINANCE_API_KEY", "")
+    PUBLIC_DATA_API_KEY: str =os.getenv("PUBLIC_DATA_API_KEY", "")
 
 
     # ── JWT (1번 담당 추가) ──────────────────
