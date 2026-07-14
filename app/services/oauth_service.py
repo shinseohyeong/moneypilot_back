@@ -151,8 +151,10 @@ def _get_or_create_user(db: Session, provider: str, info: dict, social_tokens: d
     provider_user_id = info["provider_user_id"]
     email = info["email"]
 
+    # 카카오는 이메일이 비즈니스 앱 전환 시에만 제공된다.
+    # 이메일이 없으면 provider와 고유 ID로 대체 이메일을 생성한다.
     if not email:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, "소셜 계정에서 이메일을 가져오지 못했습니다.")
+        email = f"{provider}_{provider_user_id}@moneypilot.local"
 
     # 1) 이미 연결된 OAuth 계정이 있나?
     oauth = db.query(OAuthAccount).filter(
