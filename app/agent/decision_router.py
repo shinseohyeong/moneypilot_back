@@ -115,7 +115,7 @@ JSON 외의 설명이나 마크다운은 출력하지 마세요.
 
             keep_alive="30m",
             options={
-                "temperature": 0.3,
+                "temperature": 0,
                 "num_predict": 512,
                 "num_ctx": 4096,
             },

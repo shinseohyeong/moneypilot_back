@@ -11,12 +11,16 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.repositories.stock_chatbot_repository import (
-    StockChatbotRepository,
+from app.repositories.stock_report_repository import (
+    StockReportRepository,
 )
 from app.services.stock_chatbot_intent_service import (
     StockChatbotIntentService,
 )
+
+import logging # 디버깅용
+
+logger = logging.getLogger(__name__)
 
 
 def _serialize_number(
@@ -110,12 +114,23 @@ def get_stock_price_tool(
     }
     """
 
-    repository = StockChatbotRepository(db)
+    logger.info(
+        "[stock_price_tool] user_id=%s, message=%s",
+        user_id,
+        message,
+    )
+
+    repository = StockReportRepository(db)
 
     watchlist_rows = (
         repository.list_user_watchlist_stocks(
             user_id=user_id,
         )
+    )
+
+    logger.info(
+        "[stock_price_tool] watchlist_count=%s",
+        len(watchlist_rows),
     )
 
     if not watchlist_rows:

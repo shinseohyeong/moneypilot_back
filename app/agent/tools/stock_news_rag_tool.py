@@ -16,6 +16,10 @@ from app.repositories.stock_report_repository import (
     StockReportRepository,
 )
 
+import logging # 디버깅용
+
+logger = logging.getLogger(__name__)
+
 
 WATCHLIST_QUERY_KEYWORDS = (
     "관심종목",
@@ -75,12 +79,7 @@ def _build_stock_news_search_query(
 
     normalized_query = query.strip()
 
-    is_watchlist_question = any(
-        keyword in normalized_query
-        for keyword in WATCHLIST_QUERY_KEYWORDS
-    )
-
-    if not is_watchlist_question:
+    if not _is_watchlist_question(normalized_query):
         return normalized_query, []
 
     stock_names = _list_watchlist_stock_names(
@@ -107,12 +106,11 @@ def search_stock_news_rag_tool(
 ) -> dict:
     """
     주식 뉴스와 섹터 인사이트 RAG 문서를 검색합니다.
-
-    주식 뉴스 문서는 공용 데이터이므로
-    Chroma 검색 시 user_id 필터를 사용하지 않습니다.
-
-    user_id는 "내 관심종목" 질문의 검색어 보강에만 사용합니다.
     """
+
+    is_watchlist_question = (
+        _is_watchlist_question(query)
+    )
 
     search_query, watchlist_stock_names = (
         _build_stock_news_search_query(
@@ -122,13 +120,24 @@ def search_stock_news_rag_tool(
         )
     )
 
+    if (
+        is_watchlist_question
+        and not watchlist_stock_names
+    ):
+        return {
+            "success": False,
+            "documents": [],
+            "data": None,
+            "message": (
+                "현재 로그인한 사용자에게 "
+                "등록된 관심종목이 없습니다. "
+                "관심종목을 먼저 등록해주세요."
+            ),
+        }
+
     result = search_rag_documents(
         query=search_query,
-
-        # STOCK_NEWS 문서는 공용 데이터이므로
-        # 특정 사용자 ID로 필터링하지 않습니다.
         user_id=None,
-
         domain=RagDomain.STOCK_NEWS,
         n_results=5,
     )
@@ -164,3 +173,17 @@ def search_stock_news_rag_tool(
             "섹터 인사이트를 검색했습니다."
         ),
     }
+
+def _is_watchlist_question(
+    query: str,
+) -> bool:
+    """
+    사용자가 자신의 관심종목을 기준으로 질문했는지 판단합니다.
+    """
+
+    normalized_query = query.strip()
+
+    return any(
+        keyword in normalized_query
+        for keyword in WATCHLIST_QUERY_KEYWORDS
+    )
