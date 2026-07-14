@@ -60,6 +60,11 @@ def extract_used_tools(
         used_tools.append(
             "user_spending_rag_tool"
         )
+        
+    if result.get("stock_rag_result"):
+        used_tools.append(
+            "stock_news_rag_tool"
+        )
 
     if result.get("chat_rag_result"):
         used_tools.append(
@@ -106,6 +111,7 @@ def resolve_chat_type(
 
     if intent in {
         "stock_price",
+        "stock_news",
     }:
         return "stock"
 
@@ -177,6 +183,7 @@ def build_failed_result(
         ),
         "tool_result": None,
         "rag_result": None,
+        "stock_rag_result": None,
         "chat_rag_result": None,
         "error": str(error),
     }

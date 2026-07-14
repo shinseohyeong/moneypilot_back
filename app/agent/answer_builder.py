@@ -1,4 +1,5 @@
 import json
+import logging # 디버그용
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
@@ -14,6 +15,7 @@ client = Client(
     timeout=300.0,
 )
 
+logger = logging.getLogger(__name__)
 
 def to_float(
     value: int | float | str | Decimal | None,
@@ -215,12 +217,25 @@ def build_llm_answer(
     action: str,
     tool_result: dict | None = None,
     rag_result: dict | None = None,
+    stock_rag_result: dict | None = None,
     chat_rag_result: dict | None = None,
     history: list[dict] | None = None,
 ) -> str:
     """
     RAG 결과나 일반 질문은 Ollama 채팅 모델로 답변을 생성한다.
     """
+    stock_rag_context = None
+
+    if stock_rag_result:
+        stock_rag_context = (
+            stock_rag_result.get("data")
+            or {
+                "documents": stock_rag_result.get(
+                    "documents",
+                    [],
+                )
+            }
+        )
 
     user_prompt = f"""
 사용자 질문:
@@ -234,6 +249,13 @@ def build_llm_answer(
 
 소비 분석 RAG 결과:
 {json.dumps(rag_result, ensure_ascii=False, default=str)}
+
+주식/뉴스 RAG 결과:
+{json.dumps(
+    stock_rag_context,
+    ensure_ascii=False,
+    default=str,
+)}
 
 과거 Agent 대화 RAG 결과:
 {json.dumps(chat_rag_result, ensure_ascii=False, default=str)}
@@ -259,10 +281,21 @@ def build_llm_answer(
                 },
             ],
             stream=False,
+            think=False,
             options={
                 "temperature": 0.3,
             },
             keep_alive="30m",
+        )
+
+        logger.info(
+            "Ollama Answer 응답 content: %s",
+            response.message.content,
+        )
+
+        logger.info(
+            "Ollama Answer 종료 이유: %s",
+            getattr(response, "done_reason", None),
         )
 
     except ResponseError as exc:

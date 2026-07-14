@@ -35,18 +35,26 @@ AGENT_DECISION_SYSTEM_PROMPT = """
 - 예: "내 관심종목 등락률 보여줘"
 - 예: "삼성전자랑 SK하이닉스 가격 비교해줘"
 
-5. agent_chat_rag
+5. stock_news
+- 개별 종목의 최근 뉴스, 호재, 악재, 위험 요인,
+  뉴스 분위기와 섹터 인사이트가 필요한 경우
+- 예: "삼성전자 최근 뉴스 알려줘"
+- 예: "삼성전자 위험 요인이 뭐야?"
+- 예: "반도체 섹터 최근 흐름이 어때?"
+- 예: "내 관심종목 관련 최근 악재 알려줘"
+
+6. agent_chat_rag
 - 현재 최근 대화만으로 찾기 어려운 과거 대화 내용을
   검색해야 하는 경우
 - 예: "예전에 내가 무슨 목표를 말했지?"
 - 예: "전에 말한 소비 계획 다시 알려줘"
 
-6. general
+7. general
 - 별도 DB Tool이나 RAG 검색 없이 일반 답변이 가능한 경우
 - 인사, 사용 방법 질문, 간단한 설명 등이 해당된다.
 
 중요 규칙:
-- 아직 구현되지 않은 finance_profile, stock_news,
+- 아직 구현되지 않은 finance_profile,
   product_recommend, disclaimer 같은 action은 절대 반환하지 않는다.
 - 월별 금액이나 카테고리별 금액 질문은 추측하지 말고
   반드시 spending_summary 또는 spending_category를 선택한다.
@@ -54,6 +62,10 @@ AGENT_DECISION_SYSTEM_PROMPT = """
 - 최근 대화로 충분히 답할 수 있다면 agent_chat_rag를 남용하지 않는다.
 - 현재가, 종가, 등락률, 거래량처럼 정확한 주식 시세 질문은
   추측하지 말고 반드시 stock_price를 선택한다.
+- 주식 종목의 뉴스, 호재, 악재, 위험 요인,
+  섹터 흐름 질문은 stock_news를 선택한다.
+- 현재가, 종가, 등락률 같은 정확한 시세 질문은
+  stock_news가 아니라 stock_price를 선택한다.
 
 월 추론 규칙:
 - 요청 body에는 month가 따로 오지 않는다.

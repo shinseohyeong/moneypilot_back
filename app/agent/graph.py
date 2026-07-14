@@ -17,6 +17,7 @@ TOOL_ACTIONS = {
     "spending_category",
     "spending_report",
     "stock_price",
+    "stock_news",
     "agent_chat_rag",
 }
 
@@ -78,6 +79,14 @@ def execute_tool_node(
             "rag_result": result,
             "chat_rag_result": None,
         }
+    
+    if action == "stock_news":
+        return {
+            "tool_result": None,
+            "rag_result": None,
+            "stock_rag_result": result,
+            "chat_rag_result": None,
+        }
 
     if action == "agent_chat_rag":
         return {
@@ -103,6 +112,7 @@ def get_failed_result_message(
     for key in (
         "tool_result",
         "rag_result",
+        "stock_rag_result",
         "chat_rag_result",
     ):
         result = state.get(key)
@@ -146,7 +156,12 @@ def generate_answer_node(
         action=state["intent"],
         tool_result=state.get("tool_result"),
         rag_result=state.get("rag_result"),
-        chat_rag_result=state.get("chat_rag_result"),
+        stock_rag_result=state.get(
+            "stock_rag_result"
+        ),
+        chat_rag_result=state.get(
+            "chat_rag_result"
+        ),
         history=state.get("history"),
     )
 
@@ -228,6 +243,7 @@ def run_agent_graph(
         "intent": "general",
         "tool_result": None,
         "rag_result": None,
+        "stock_rag_result": None,
         "chat_rag_result": None,
         "answer": "",
         "error": None,
