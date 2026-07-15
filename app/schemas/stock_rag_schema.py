@@ -54,3 +54,19 @@ class StockRagSearchResponse(BaseModel):
     top_k: int
     total_count: int
     results: List[StockRagSearchItem]
+
+class StockCommonRagBuildResponse(BaseModel):
+    success: bool
+    domain: str
+
+    news_document_count: int = 0
+    sector_document_count: int = 0
+
+    indexed_document_count: int = 0
+    indexed_chunk_count: int = 0
+
+    failed_document_keys: List[str] = Field(
+        default_factory=list,
+    )
+
+    message: str

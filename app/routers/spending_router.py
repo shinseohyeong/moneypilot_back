@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.dependencies import get_current_user
+from app.models.user_model import User
 from app.schemas.spending_analysis import (
     MonthlyAnalysisRequest,
     MonthlySummaryResponse,
@@ -17,6 +19,7 @@ from app.services.spending_analysis_service import (
     SpendingService,
 )
 from app.services.spending_report_service import AnalysisReportService
+
 
 router = APIRouter()
 
@@ -43,6 +46,7 @@ def get_analysis_report_service(
 def analyze_monthly_spending(
     request: MonthlyAnalysisRequest,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) : 
     """
     거래내역 기반으로 월별 소비 분석하고 실행하고 저장한다
@@ -55,13 +59,10 @@ def analyze_monthly_spending(
     - 여유자금: 총수입 - 총지출
     - 전월 대비 증감액/증감률: 전월 total_spending 기준
     """
-    
-    # JWT 인증 완성 후 current_user.id로 변경
-    user_id = 1
     service = SpendingAnalysisService(db)
     
     return service.analyze_and_save_monthly_summary(
-        user_id=user_id,
+        user_id=current_user.id,
         month=request.month,
     )
 
@@ -74,6 +75,7 @@ def analyze_monthly_spending(
 def get_monthly_spending_summary(
     month: str,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
     특정 월의 소비 요약 정보를 조회
@@ -82,13 +84,10 @@ def get_monthly_spending_summary(
     - 전월 대비 지출 증감액
     - 전월 대비 지출 증감률
     """
-    
-    # JWT 인증 완성 후 current_user.id로 변경
-    user_id = 1
     service = SpendingAnalysisService(db)
     
     return service.get_monthly_summary_by_month(
-        user_id=user_id,
+        user_id=current_user.id,
         month=month,
     )
     
@@ -103,6 +102,7 @@ def get_monthly_spending_summary(
 def get_monthly_expense_types(
     month: str,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
     월별 고정비/변동비 금액과 총수입 대비 비율 조회
@@ -111,12 +111,10 @@ def get_monthly_expense_types(
     - variable_expense.amount: 변동비 금액
     - variable_expense.ratio: 총수입 대비 변동비 비율
     """
-    # JWT 인증 완성 후 current_user.id로 변경
-    user_id = 1
     service = SpendingAnalysisService(db)
     
     return service.get_monthly_expense_types(
-        user_id=user_id,
+        user_id=current_user.id,
         month=month,
     )
     
@@ -132,6 +130,7 @@ def get_monthly_expense_types(
 def save_monthly_category_spendings(
     month: str,
     service: SpendingService = Depends(get_spending_service),
+    current_user: User = Depends(get_current_user),
 ):
     """
     특정 월의 카테고리별 지출 정보 조회
@@ -139,11 +138,8 @@ def save_monthly_category_spendings(
     - 전체 지출 대비 비율
     """
     
-    # JWT 인증 완성 후 current_user.id로 변경
-    user_id = 1
-    
     return service.save_monthly_category_spendings(
-        user_id=user_id,
+        user_id=current_user.id,
         month=month,
     )
 
@@ -158,6 +154,7 @@ def save_monthly_category_spendings(
 def get_monthly_overspending_categories(
     month: str,
     service: SpendingService = Depends(get_spending_service),
+    current_user: User = Depends(get_current_user),
 ):
     """
     월별 과소비 카테고리 후보 조회
@@ -165,11 +162,9 @@ def get_monthly_overspending_categories(
     - 이번 달 가장 많이 쓴 카테고리 TOP 3
     - 전월보다 많이 늘어난 카테고리 TOP 3
     """
-    # JWT 인증 완성 후 current_user.id로 변경
-    user_id = 1
     
     return service.get_monthly_overspending_categories(
-        user_id=user_id,
+        user_id=current_user.id,
         month=month,
     )
 
@@ -184,6 +179,7 @@ def get_monthly_overspending_categories(
 def save_monthly_card_spendings(
     month: str,
     service: SpendingService = Depends(get_spending_service),
+    current_user: User = Depends(get_current_user),
 ):
     """
     특정 월의 거래내역을 카드별/현금별로 합산하여 저장
@@ -191,16 +187,14 @@ def save_monthly_card_spendings(
     - statement_id가 없는 거래는 현금으로 계산
     - 총지출 대비 사용비율 계산
     """
-    # JWT 인증 완성 후 current_user.id로 변경
-    user_id = 1
     
     card_spendings = service.save_monthly_card_spendings(
-        user_id=user_id,
+        user_id=current_user.id,
         month=month,
     )
     
     return service.get_monthly_card_spendings(
-        user_id=user_id,
+        user_id=current_user.id,
         month=month,
     )
     
@@ -213,6 +207,7 @@ def save_monthly_card_spendings(
 def get_monthly_card_spendings(
     month: str,
     service: SpendingService = Depends(get_spending_service),
+    current_user: User = Depends(get_current_user),
 ):
     """
     저장된 월별 카드별 사용금액 조회
@@ -222,11 +217,8 @@ def get_monthly_card_spendings(
     - 총지출 대비 사용비율
     """
     
-    # JWT 인증 완성 후 current_user.id로 변경
-    user_id = 1
-    
     return service.get_monthly_card_spendings(
-        user_id=user_id,
+        user_id=current_user.id,
         month=month,
     )
 
@@ -241,13 +233,14 @@ def get_monthly_card_spendings(
 def get_monthly_spending_forecast(
     month: str,
     service: SpendingService = Depends(get_spending_service),
+    current_user: User = Depends(get_current_user),
 ):
     """
     최근 6개우러 총사용금액, 증감액, 증감률과
     이번달 예상 사용금액을 조회
     """
     return service.get_monthly_spending_forecast(
-        user_id=1,
+        user_id=current_user.id,
         month=month,
     )
 
@@ -263,7 +256,7 @@ def get_monthly_spending_forecast(
 def create_monthly_analysis_report(
     month: str, 
     service: AnalysisReportService = Depends(get_analysis_report_service),
-    # current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """
     AI 소비 분석 리포트를 생성
@@ -276,14 +269,9 @@ def create_monthly_analysis_report(
     6. LLM 호출해 소비 패턴 해석, 과소비 원인, 다음 달 실천 전략 생성
     7. analysis_reports 테이블에 저장하거나 기존 리포트 갱신
     """
-    # JWT 적용 전 임시 user_id
-    user_id = 1
-
-    # JWT 적용 후 사용
-    # user_id = current_user.id
 
     return service.generate_monthly_report(
-        user_id=user_id,
+        user_id=current_user.id,
         month=month,
     )
 
@@ -296,19 +284,14 @@ def create_monthly_analysis_report(
 def get_monthly_analysis_report(
     month: str,
     service: AnalysisReportService = Depends(get_analysis_report_service),
-    # current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """
     저장된 AI 소비 분석 리포트 조회
     GET - LLM 호출하지 않고 DB에 저장된 리포트 조회 
     """
-    # JWT 적용 전 임시 user_id
-    user_id = 1
-
-    # JWT 적용 후 사용
-    # user_id = current_user.id
 
     return service.get_monthly_report(
-        user_id=user_id,
+        user_id=current_user.id,
         month=month,
     )
