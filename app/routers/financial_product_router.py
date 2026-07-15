@@ -108,7 +108,7 @@ def recommend_savings_products(
 )
 def recommend_insurances(
     gender: str,
-    insurance_type: str | None = None,
+    insurance_name: str | None = None,
     company_code: str | None = None,
     limit: int = 5,
     db: Session = Depends(get_db),
@@ -116,7 +116,7 @@ def recommend_insurances(
     return recommend_insurance_products(
         db=db,
         gender=gender,
-        insurance_type=insurance_type,
+        insurance_name=insurance_name,
         company_code=company_code,
         limit=limit,
     )

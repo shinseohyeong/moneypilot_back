@@ -371,12 +371,12 @@ def recommend_insurance_products(
     db: Session,
     gender: str | None = None,
     insurance_type: str | None = None,
-    company_code: str | None = None,
+    company_name: str | None = None,
     limit: int = 5,
 ):
     products = get_insurance_products(
         db=db,
-        company_code=company_code,
+        company_name=company_name,
         insurance_type=insurance_type,
     )
 
