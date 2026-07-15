@@ -1,6 +1,6 @@
 # ==========================================
 # 파일 위치 :
-# app/services/parsers/shinhan_parser.py
+# app/parsers/shinhan_parser.py
 # 역할 :
 # 신한카드 거래명세서 엑셀 파싱
 # 반환 :

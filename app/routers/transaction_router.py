@@ -7,38 +7,59 @@
 # 3. 거래 삭제
 # 4. 현금 거래 직접 입력
 # ==========================================
-from fastapi import APIRouter, Depends
+from datetime import date
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.schemas.transaction import TransactionCreate
 from app.services.transaction_service import TransactionService
 from app.core.database import get_db
+from app.core.dependencies import get_current_user
 
 router = APIRouter(
     tags=["Transactions"]
 )
 
-@router.get("/")
-def transaction_check():
-    return {"message": "거래 내역 목록 조회"}
-
 # ==========================================
-# 거래내역 상세 조회
+# 월별 거래내역 조회
 # GET
-# /api/transactions/{transactionId}
+# /api/transactions/{month}
 # 파일 목록 클릭 후 호출
 # ==========================================
 @router.get(
-    "/{statement_id}",
-    summary="거래내역 조회"
+    "/",
+    summary="월별 거래내역 조회"
 )
 def get_transactions(
-    statement_id:int,
-    db:Session=Depends(get_db)
+    month: str = Query(
+        ...,
+        pattern=r"^\d{4}-\d{2}$",
+        description="조회할 월 (YYYY-MM)"
+    ),
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     service = TransactionService(db)
     return service.get_transactions(
-        statement_id
+        current_user.id,
+        month
+    )
+
+# ==========================================
+# 특정 날짜 거래 조회
+# GET /transactions/date?date=2026-01-15
+# ==========================================
+@router.get("/date")
+def get_transactions_by_date(
+    date: date,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    service = TransactionService(db)
+
+    return service.get_transactions_by_date(
+        current_user.id,
+        date
     )
     
 # ==========================================
@@ -54,13 +75,40 @@ def get_transactions(
 def update_transaction(
     transaction_id:int,
     request:TransactionCreate,
-    db:Session=Depends(get_db)
+    db:Session=Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     service = TransactionService(db)
     return service.update_transaction(
         transaction_id,
+        current_user.id,
         request
     )
+    
+# ==========================================
+# 현금 거래 삭제
+# DELETE
+# /api/transactions/{transaction_id
+# ==========================================
+@router.delete(
+    "/{transaction_id}",
+    summary="거래 삭제"
+)
+def delete_transaction(
+    transaction_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
+    service = TransactionService(db)
+
+    service.delete_transaction(
+        transaction_id,
+        current_user.id
+    )
+
+    return {
+        "message": "거래 삭제 완료"
+    }
     
 # ==========================================
 # 현금 거래 수기 입력
@@ -75,10 +123,11 @@ def update_transaction(
 )
 def create_manual_transaction(
     request:TransactionCreate,
+    current_user=Depends(get_current_user),
     db:Session=Depends(get_db)
 ):
     service = TransactionService(db)
     return service.create_manual_transaction(
-        user_id=1,
+        current_user.id,
         request=request
     )

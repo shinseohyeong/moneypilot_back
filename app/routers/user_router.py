@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -23,3 +23,20 @@ def update_my_info(
     db: Session = Depends(get_db),
 ) -> UserResponse:
     return user_service.update_profile(db, current_user, body)
+
+@router.delete(
+    "/me",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="회원 탈퇴",
+    responses={404: {"description": "사용자를 찾을 수 없음"}},
+)
+def withdraw_me(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> None:
+    """
+    회원 탈퇴 (soft delete).
+    계정을 비활성화하고 refresh token을 폐기한 뒤,
+    RAG에 저장된 개인 문서를 삭제한다.
+    """
+    user_service.withdraw_user(db, current_user.id)
