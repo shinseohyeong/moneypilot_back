@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session, selectinload
 from app.models.financial_product_model import DepositProduct, DepositProductRate, SavingProduct, SavingProductRate, InsuranceProduct
-from app.clients.financial_product_client import fetch_deposit_products, fetch_saving_products
+from app.clients.financial_product_client import fetch_deposit_products, fetch_saving_products, fetch_insurance_products
 from app.repositories.financial_product_repository import (
     get_deposit_products, get_saving_products, get_insurance_products
 )
@@ -142,6 +142,62 @@ def sync_saving_products(db: Session):
         "message": "적금 상품이 성공적으로 동기화되었습니다."
     }
 
+def sync_insurance_products(db: Session):
+    data = fetch_insurance_products()   # API 호출
+
+    insurance_list = (
+        db.query(InsuranceProduct)
+        .filter(
+            InsuranceProduct.company_code == product.get("cmpyCd"),
+            InsuranceProduct.insurance_name == product.get("prdNm"),
+        )
+        .first()
+    )
+
+    for product in insurance_list:
+
+        if not product.get("cmpyCd") or not product.get("prdNm"):
+            continue
+
+        insurance_product = get_insurance_products(
+            db,
+            product.get("cmpyCd"),
+            product.get("prdNm")
+        )
+
+        # 없으면 추가
+        if insurance_product is None:
+            insurance_product = InsuranceProduct(
+                company_code=product.get("cmpyCd"),
+                company_name=product.get("cmpyNm"),
+                insurance_name=product.get("prdNm"),
+                insurance_type=product.get("ptrn"),
+                description=product.get("mog"),
+                age=product.get("age"),
+                male_insurance_rate=product.get("mlInsRt"),
+                female_insurance_rate=product.get("fmlInsRt"),
+            )
+
+            db.add(insurance_product)
+
+        # 있으면 수정
+        else:
+            insurance_product.company_name = product.get("cmpyNm")
+            insurance_product.insurance_name = product.get("prdNm")
+            insurance_product.insurance_type = product.get("ptrn")
+            insurance_product.description = product.get("mog")
+            insurance_product.age = product.get("age")
+            insurance_product.male_insurance_rate = product.get("mlInsRt")
+            insurance_product.female_insurance_rate = product.get("fmlInsRt")
+
+
+    db.commit() # 저장
+
+    return {
+        "message": "보험 상품이 성공적으로 동기화되었습니다."
+    }
+
+
 def recommend_deposit_products(
     db: Session,
     term: int,
@@ -177,13 +233,18 @@ def recommend_deposit_products(
         if preferred_bank and product.bank_name == preferred_bank:
             score += 0.1
 
+        # 일반 과세(이자소득세 15.4%)
         principal = deposit_amount
-        expected_interest = (
+
+        before_tax_interest = (
             principal
             * (max_rate / 100)
             * (term / 12)
         )
-        maturity_amount = principal + expected_interest
+        
+        after_tax_interest = before_tax_interest * 0.846
+
+        maturity_amount = principal + after_tax_interest
 
         recommend_list.append({
             "id": product.id,
@@ -193,7 +254,8 @@ def recommend_deposit_products(
             "score": score,
             "max_rate": max_rate,
             "principal": principal,
-            "expected_interest": int(expected_interest),
+            "before_tax_interest": int(before_tax_interest),
+            "after_tax_interest": int(after_tax_interest),
             "maturity_amount": int(maturity_amount),
         })
 
@@ -214,7 +276,8 @@ def recommend_deposit_products(
             "product_name": product.product_name,
             "max_rate": item["max_rate"],
             "principal": item["principal"],
-            "expected_interest": item["expected_interest"],
+            "before_tax_interest": item["before_tax_interest"],
+            "after_tax_interest": item["after_tax_interest"],
             "maturity_amount": item["maturity_amount"],
         })
     return result
@@ -255,13 +318,17 @@ def recommend_saving_products(
             score += 0.1
 
         principal = monthly_amount * term
-        expected_interest = (
+
+        before_tax_interest = (
             monthly_amount
             * (max_rate / 100)
             * (term + 1)
-            / 24
+            /24
         )
-        maturity_amount = principal + expected_interest
+
+        after_tax_interest = before_tax_interest * 0.846
+
+        maturity_amount = principal + after_tax_interest
 
         recommend_list.append({
             "id": product.id,
@@ -271,7 +338,8 @@ def recommend_saving_products(
             "score": score,
             "max_rate": max_rate,
             "principal": principal,
-            "expected_interest": int(expected_interest),
+            "before_tax_interest": int(before_tax_interest),
+            "after_tax_interest": int(after_tax_interest),
             "maturity_amount": int(maturity_amount),
         })
 
@@ -292,7 +360,40 @@ def recommend_saving_products(
             "product_name": product.product_name,
             "max_rate": item["max_rate"],
             "principal": item["principal"],
-            "expected_interest": item["expected_interest"],
+            "before_tax_interest": item["before_tax_interest"],
+            "after_tax_interest": item["after_tax_interest"],
             "maturity_amount": item["maturity_amount"],
         })
     return result
+
+
+def recommend_insurance_products(
+    db: Session,
+    gender: str | None = None,
+    insurance_type: str | None = None,
+    company_code: str | None = None,
+    limit: int = 5,
+):
+    products = get_insurance_products(
+        db=db,
+        company_code=company_code,
+        insurance_type=insurance_type,
+    )
+
+    # 성별 기준 보험료 오름차순 정렬
+    if gender == "남자":
+        products.sort(
+            key=lambda x: int(
+                x.male_insurance_rate or 999
+            )
+        )
+
+    elif gender == "여자":
+        products.sort(
+            key=lambda x: int(
+                x.female_insurance_rate or 999
+            )
+        )
+
+    # 상위 10개 추천
+    return products[:limit]
