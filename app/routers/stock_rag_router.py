@@ -12,8 +12,12 @@ from app.schemas.stock_rag_schema import (
     StockRagBuildRequest,
     StockRagBuildResponse,
     StockRagSearchResponse,
+    StockCommonRagBuildResponse,
 )
 from app.services.stock_rag_service import StockRagService
+from app.rag.ingestors.stock_news_ingestor import (
+    ingest_stock_news_documents,
+)
 
 
 router = APIRouter()
@@ -59,4 +63,28 @@ def search_stock_rag(
     return service.search(
         query=query,
         top_k=top_k,
+    )
+
+@router.post(
+    "/stock/common/build",
+    response_model=StockCommonRagBuildResponse,
+    summary="공통 Agent용 주식/뉴스 RAG 인덱싱",
+)
+def build_common_stock_rag_index(
+    request: StockRagBuildRequest,
+    db: Session = Depends(get_db),
+) -> StockCommonRagBuildResponse:
+    """
+    DB의 뉴스 요약과 섹터 인사이트를
+    팀 공통 Agent RAG 컬렉션에 저장합니다.
+    """
+
+    result = ingest_stock_news_documents(
+        db=db,
+        news_limit=request.news_limit,
+        sector_limit=request.sector_limit,
+    )
+
+    return StockCommonRagBuildResponse(
+        **result,
     )

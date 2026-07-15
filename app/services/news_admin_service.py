@@ -281,7 +281,7 @@ class NewsAdminService:
 
         try:
             api_result = self.naver_news_client.search_news(
-                keyword=setting.keyword,
+                query=setting.keyword,
                 display=setting.display_count,
                 start=1,
                 sort=setting.sort,

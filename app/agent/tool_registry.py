@@ -8,6 +8,12 @@ from app.agent.tools.user_rag_search_tool import (
     search_user_agent_chat_rag_tool,
     search_user_spending_rag_tool,
 )
+from app.agent.tools.stock_price_tool import (
+    get_stock_price_tool,
+)
+from app.agent.tools.stock_news_rag_tool import (
+    search_stock_news_rag_tool,
+)
 
 
 def run_registered_tool(
@@ -68,6 +74,20 @@ def run_registered_tool(
             user_id=user_id,
             query=message,
             month=month,
+        )
+    
+    if action == "stock_price":
+        return get_stock_price_tool(
+            db=db,
+            user_id=user_id,
+            message=message,
+        )
+    
+    if action == "stock_news":
+        return search_stock_news_rag_tool(
+            db=db,
+            user_id=user_id,
+            query=message,
         )
 
     if action == "agent_chat_rag":

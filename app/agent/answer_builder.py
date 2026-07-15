@@ -1,4 +1,5 @@
 import json
+import logging # 디버그용
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
@@ -14,6 +15,7 @@ client = Client(
     timeout=300.0,
 )
 
+logger = logging.getLogger(__name__)
 
 def to_float(
     value: int | float | str | Decimal | None,
@@ -128,6 +130,84 @@ def build_rule_based_answer(
             )
 
         return "\n".join(lines)
+    
+    if action == "stock_price":
+        stocks = data.get("stocks", [])
+
+        if not stocks:
+            return None
+
+        lines = [
+            "관심종목의 최근 시세를 알려드릴게요.",
+            "",
+        ]
+
+        for stock in stocks:
+            stock_name = (
+                stock.get("stock_name")
+                or "종목명 없음"
+            )
+            stock_code = (
+                stock.get("stock_code")
+                or "-"
+            )
+
+            lines.append(
+                f"[{stock_name}({stock_code})]"
+            )
+
+            if not stock.get("has_price_data"):
+                lines.append(
+                    "- 최신 시세 데이터가 없습니다."
+                )
+                lines.append("")
+                continue
+
+            price_date = (
+                stock.get("price_date")
+                or "기준일 미확인"
+            )
+            close_price = stock.get(
+                "close_price"
+            )
+            previous_close = stock.get(
+                "previous_close"
+            )
+            change_rate = stock.get(
+                "change_rate"
+            )
+            volume = stock.get("volume")
+
+            lines.append(
+                f"- 기준일: {price_date}"
+            )
+
+            if close_price is not None:
+                lines.append(
+                    f"- 종가: {format_won(close_price)}"
+                )
+
+            if previous_close is not None:
+                lines.append(
+                    f"- 전일 종가: "
+                    f"{format_won(previous_close)}"
+                )
+
+            if change_rate is not None:
+                lines.append(
+                    f"- 등락률: "
+                    f"{to_float(change_rate):.2f}%"
+                )
+
+            if volume is not None:
+                lines.append(
+                    f"- 거래량: "
+                    f"{int(to_float(volume)):,}주"
+                )
+
+            lines.append("")
+
+        return "\n".join(lines).strip()
 
     return None
 
@@ -137,12 +217,25 @@ def build_llm_answer(
     action: str,
     tool_result: dict | None = None,
     rag_result: dict | None = None,
+    stock_rag_result: dict | None = None,
     chat_rag_result: dict | None = None,
     history: list[dict] | None = None,
 ) -> str:
     """
     RAG 결과나 일반 질문은 Ollama 채팅 모델로 답변을 생성한다.
     """
+    stock_rag_context = None
+
+    if stock_rag_result:
+        stock_rag_context = (
+            stock_rag_result.get("data")
+            or {
+                "documents": stock_rag_result.get(
+                    "documents",
+                    [],
+                )
+            }
+        )
 
     user_prompt = f"""
 사용자 질문:
@@ -156,6 +249,13 @@ def build_llm_answer(
 
 소비 분석 RAG 결과:
 {json.dumps(rag_result, ensure_ascii=False, default=str)}
+
+주식/뉴스 RAG 결과:
+{json.dumps(
+    stock_rag_context,
+    ensure_ascii=False,
+    default=str,
+)}
 
 과거 Agent 대화 RAG 결과:
 {json.dumps(chat_rag_result, ensure_ascii=False, default=str)}
@@ -181,10 +281,21 @@ def build_llm_answer(
                 },
             ],
             stream=False,
+            think=False,
             options={
                 "temperature": 0.3,
             },
             keep_alive="30m",
+        )
+
+        logger.info(
+            "Ollama Answer 응답 content: %s",
+            response.message.content,
+        )
+
+        logger.info(
+            "Ollama Answer 종료 이유: %s",
+            getattr(response, "done_reason", None),
         )
 
     except ResponseError as exc:

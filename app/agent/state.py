@@ -15,6 +15,7 @@ class AgentState(TypedDict, total=False):
 
     tool_result: dict[str, Any] | None
     rag_result: dict[str, Any] | None
+    stock_rag_result: dict[str, Any] | None
     chat_rag_result: dict[str, Any] | None
 
     answer: str

@@ -51,9 +51,19 @@ def extract_used_tools(
                 "monthly_category_spending_tool"
             )
 
+        elif intent == "stock_price":
+            used_tools.append(
+                "stock_price_tool"
+            )
+
     if result.get("rag_result"):
         used_tools.append(
             "user_spending_rag_tool"
+        )
+        
+    if result.get("stock_rag_result"):
+        used_tools.append(
+            "stock_news_rag_tool"
         )
 
     if result.get("chat_rag_result"):
@@ -92,16 +102,18 @@ def extract_referenced_summary_id(
 def resolve_chat_type(
     intent: str | None,
 ) -> str:
-    """
-    Agent intent를 대화방 chat_type으로 변환한다.
-    """
-
     if intent in {
         "spending_summary",
         "spending_category",
         "spending_report",
     }:
         return "consumption"
+
+    if intent in {
+        "stock_price",
+        "stock_news",
+    }:
+        return "stock"
 
     return "general"
 
@@ -171,6 +183,7 @@ def build_failed_result(
         ),
         "tool_result": None,
         "rag_result": None,
+        "stock_rag_result": None,
         "chat_rag_result": None,
         "error": str(error),
     }
