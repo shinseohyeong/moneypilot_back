@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.models.financial_product_model import DepositProduct, DepositProductRate, SavingProduct, SavingProductRate, InsuranceProduct
 from app.clients.financial_product_client import fetch_deposit_products, fetch_saving_products, fetch_insurance_products
 from app.repositories.financial_product_repository import (
-    get_deposit_products, get_saving_products, get_insurance_products
+    get_deposit_products, get_saving_products, get_insurance_products, get_insurance_product
 )
 
 
@@ -145,21 +145,14 @@ def sync_saving_products(db: Session):
 def sync_insurance_products(db: Session):
     data = fetch_insurance_products()   # API 호출
 
-    insurance_list = (
-        db.query(InsuranceProduct)
-        .filter(
-            InsuranceProduct.company_code == product.get("cmpyCd"),
-            InsuranceProduct.insurance_name == product.get("prdNm"),
-        )
-        .first()
-    )
+    items = data["response"]["body"]["items"]["item"]
 
-    for product in insurance_list:
+    for product in items:
 
         if not product.get("cmpyCd") or not product.get("prdNm"):
             continue
 
-        insurance_product = get_insurance_products(
+        insurance_product = get_insurance_product(
             db,
             product.get("cmpyCd"),
             product.get("prdNm")

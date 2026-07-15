@@ -125,3 +125,18 @@ def get_insurance_products(
         )
 
     return query.all()
+
+
+def get_insurance_product(
+    db: Session,
+    company_code: str,
+    insurance_name: str,
+):
+    return (
+        db.query(InsuranceProduct)
+        .filter(
+            InsuranceProduct.company_code == company_code,
+            InsuranceProduct.insurance_name == insurance_name,
+        )
+        .first()
+    )
