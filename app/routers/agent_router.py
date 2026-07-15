@@ -9,15 +9,15 @@ from app.agent.schemas import (
     AgentSessionMessagesResponse,
 )
 from app.core.database import get_db
-from app.repositories.agent_chat_repository import (
-    AgentChatRepository,
-)
+from app.core.dependencies import get_current_user
+from app.models.user_model import User
+from app.repositories.agent_chat_repository import AgentChatRepository
 
 
 router = APIRouter()
 
-# JWT 인증 적용 전 프론트 테스트용
-TEMP_USER_ID = 1
+# # JWT 인증 적용 전 프론트 테스트용
+# TEMP_USER_ID = 1
 
 
 @router.post(
@@ -28,10 +28,11 @@ TEMP_USER_ID = 1
 def ask_agent(
     request: AgentChatRequest,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> AgentChatResponse:
     result = run_agent(
         db=db,
-        user_id=TEMP_USER_ID,
+        user_id=current_user.id,
         session_id=request.session_id,
         message=request.message,
     )
@@ -51,11 +52,12 @@ def list_agent_sessions(
         le=100,
     ),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> AgentSessionListResponse:
     repository = AgentChatRepository(db)
 
     sessions = repository.list_sessions_by_user(
-        user_id=TEMP_USER_ID,
+        user_id=current_user.id,
         limit=limit,
     )
 
@@ -105,12 +107,13 @@ def list_agent_session_messages(
         le=200,
     ),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> AgentSessionMessagesResponse:
     repository = AgentChatRepository(db)
 
     session = repository.get_session_by_id(
         session_id=session_id,
-        user_id=TEMP_USER_ID,
+        user_id=current_user.id,
     )
 
     if not session:
