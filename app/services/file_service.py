@@ -228,10 +228,13 @@ class FileService:
     # ======================================
     def get_file_detail(
         self,
-        statement_id:int,
-        user_id:int,
+        statement_id: int,
+        user_id: int,
     ):
-        statement = self.file_repository.find_by_id(statement_id, user_id)
+        statement = self.file_repository.find_by_id(
+            statement_id,
+            user_id,
+        )
 
         if not statement:
             raise HTTPException(
@@ -239,7 +242,14 @@ class FileService:
                 detail="파일이 존재하지 않습니다."
             )
 
-        return statement
+        transactions = self.transaction_repository.find_by_statement_id(
+            statement_id
+        )
+
+        return {
+            "statement": statement,
+            "transactions": transactions,
+        }
 
     # ======================================
     # 파일 삭제
@@ -299,10 +309,20 @@ class FileService:
             status_code=404,
             detail="파일이 존재하지 않습니다."
         )
-        if not statement:
-            raise Exception("파일이 존재하지 않습니다.")
         return {
         "statement_id":statement.id,
         "status":statement.status,
         "error_message":statement.error_message
     }
+    # 거래내역 보여주는 함수
+    def find_by_statement_id(
+        self,
+        statement_id: int,
+    ):
+        return (
+            self.db.query(Transaction)
+            .filter(
+                Transaction.statement_id == statement_id
+            )
+            .all()
+        )
