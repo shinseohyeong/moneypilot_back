@@ -136,6 +136,7 @@ class SpendingAnalysisRepository:
     self.db.add(summary)
     self.db.commit()
     self.db.refresh(summary)
+    return summary
   
   
   def update_monthly_summary(
@@ -145,14 +146,14 @@ class SpendingAnalysisRepository:
   ) -> MonthlySpendingSummary:
     """ 기존 월별 요약 수정 """
     
-    summary.total_income=data["total_income"],
-    summary.monthly_salary=data["monthly_salary"],
-    summary.total_spending=data["total_spending"],
-    summary.fixed_expense=data["fixed_expense"],
-    summary.variable_expense=data["variable_expense"],
-    summary.remaining_money=data["remaining_money"],
-    summary.spending_diff=data["spending_diff"],
-    summary.spending_change_rate=data["spending_change_rate"],
+    summary.total_income=data["total_income"]
+    summary.monthly_salary=data["monthly_salary"]
+    summary.total_spending=data["total_spending"]
+    summary.fixed_expense=data["fixed_expense"]
+    summary.variable_expense=data["variable_expense"]
+    summary.remaining_money=data["remaining_money"]
+    summary.spending_diff=data["spending_diff"]
+    summary.spending_change_rate=data["spending_change_rate"]
     
     self.db.commit()
     self.db.refresh(summary)

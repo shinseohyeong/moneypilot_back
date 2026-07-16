@@ -18,6 +18,7 @@ from app.repositories.transaction_repository import (
 from app.repositories.card_statement_repository import (
     FileRepository
 )
+from fastapi import HTTPException
 
 class TransactionService:
     def __init__(
@@ -66,8 +67,8 @@ class TransactionService:
         transaction = self.transaction_repo.find_by_id(transaction_id,user_id)
         
         if not transaction:
-            raise Exception(
-                status_code=400,
+            raise HTTPException(
+                status_code=404,
                 detail="거래 없음"
             )
         data=request.model_dump(exclude_none=True)
@@ -92,8 +93,8 @@ class TransactionService:
     ):
         transaction = self.transaction_repo.find_by_id(transaction_id, user_id)
         if not transaction:
-            raise Exception(
-                status_code=400,
+            raise HTTPException(
+                status_code=404,
                 detail="거래 없음"
             )
 
