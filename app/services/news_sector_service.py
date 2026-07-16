@@ -76,23 +76,12 @@ class NewsSectorService:
                 matched_keywords = data["matched_keywords"]
                 relevance_score = data["relevance_score"]
 
-                existing_mapping = self.repository.get_mapping(
+                mapping = self.repository.upsert_mapping(
                     news_id=news_id,
                     sector_id=sector_id,
+                    matched_keywords=matched_keywords,
+                    relevance_score=relevance_score,
                 )
-
-                if existing_mapping:
-                    existing_mapping.matched_keywords = matched_keywords
-                    existing_mapping.relevance_score = relevance_score
-                    mapping = existing_mapping
-                else:
-                    mapping = NewsSectorMapping(
-                        news_id=news_id,
-                        sector_id=sector_id,
-                        matched_keywords=matched_keywords,
-                        relevance_score=relevance_score,
-                    )
-                    self.repository.create_mapping(mapping)
 
                 saved_items.append(
                     {
