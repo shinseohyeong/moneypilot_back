@@ -35,7 +35,7 @@ class AnalysisReportService:
         self.report_repository = AnalysisReportRepository(db)
 
         # Ollama LLM 호출 Service
-        self.llm_service = SpendingLLMService()
+        self.llm_service = SpendingLLMService(db)
 
         # 기존 소비 분석 서비스 재사용
         self.spending_service = SpendingService(db)
@@ -92,9 +92,16 @@ class AnalysisReportService:
         )
 
         # 5. Ollama LLM 호출
-        llm_result = self.llm_service.generate_spending_report(
-            report_context=report_context,
+        llm_result = (
+            self.llm_service
+            .generate_spending_report(
+                report_context=report_context,
+                user_id=user_id,
+            )
         )
+        # llm_result = self.llm_service.generate_spending_report(
+        #     report_context=report_context,
+        # )
 
         # 6. 리포트 저장 또는 기존 리포트 수정
         report = self.report_repository.save_or_update_report(
