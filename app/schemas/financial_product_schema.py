@@ -96,3 +96,10 @@ class DepositRecommendRequest(BaseModel):
     deposit_amount: int
     term: int
     preferred_bank: str | None = None
+
+
+class InsuranceRecommendRequest(BaseModel):
+    gender: str
+    insurance_type: str | None = None
+    company_name: str | None = None
+    limit: int = 5
