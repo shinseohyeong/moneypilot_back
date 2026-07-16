@@ -111,6 +111,30 @@ class StockWatchlistRepository:
         category: StockWatchlistCategory,
     ) -> None:
         self.db.delete(category)
+        self.db.flush()
+
+
+    def delete_watchlists_by_category(
+        self,
+        user_id: int,
+        category_id: int,
+    ) -> int:
+        """
+        특정 사용자의 카테고리에 저장된 관심종목을 모두 삭제합니다.
+
+        stocks 원본 데이터는 삭제하지 않고,
+        stock_watchlists 저장 기록만 삭제합니다.
+        """
+        deleted_count = (
+            self.db.query(StockWatchlist)
+            .filter(
+                StockWatchlist.user_id == user_id,
+                StockWatchlist.category_id == category_id,
+            )
+            .delete(synchronize_session=False)
+        )
+
+        return deleted_count
 
     # =========================
     # Stock / Price

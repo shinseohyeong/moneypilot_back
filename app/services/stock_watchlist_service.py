@@ -143,6 +143,9 @@ class StockWatchlistService:
         user_id: int,
         category_id: int,
     ) -> StockWatchlistCategoryDeleteResponse:
+        """
+        카테고리와 카테고리 안의 관심종목을 함께 삭제합니다.
+        """
         category = self.repository.get_category_by_id_and_user(
             category_id=category_id,
             user_id=user_id,
@@ -151,34 +154,48 @@ class StockWatchlistService:
         if not category:
             raise HTTPException(
                 status_code=404,
-                detail="관심종목 카테고리를 찾을 수 없습니다.",
+                detail="해당 관심종목 카테고리를 찾을 수 없습니다.",
             )
 
-        watchlist_count = self.repository.count_watchlists_by_category(
-            category_id=category_id,
-            user_id=user_id,
-        )
-
-        if watchlist_count > 0:
+        if category.is_default:
             raise HTTPException(
                 status_code=400,
-                detail="카테고리에 관심종목이 있어 삭제할 수 없습니다. 먼저 관심종목을 삭제하거나 이동해주세요.",
+                detail="기본 카테고리는 삭제할 수 없습니다.",
             )
 
         try:
+            deleted_watchlist_count = (
+                self.repository.delete_watchlists_by_category(
+                    user_id=user_id,
+                    category_id=category_id,
+                )
+            )
+
             self.repository.delete_category(category)
+
             self.repository.commit()
+
+        except HTTPException:
+            self.repository.rollback()
+            raise
 
         except Exception as exc:
             self.repository.rollback()
+
             raise HTTPException(
                 status_code=500,
-                detail=f"관심종목 카테고리 삭제 중 오류가 발생했습니다: {exc}",
+                detail=(
+                    "관심종목 카테고리 삭제 중 "
+                    f"오류가 발생했습니다: {exc}"
+                ),
             ) from exc
 
         return StockWatchlistCategoryDeleteResponse(
             category_id=category_id,
-            message="관심종목 카테고리가 삭제되었습니다.",
+            message=(
+                f"카테고리와 관심종목 "
+                f"{deleted_watchlist_count}개가 삭제되었습니다."
+            ),
         )
 
     # =========================
