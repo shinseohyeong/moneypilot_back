@@ -108,7 +108,7 @@ def get_saving_products(
 def get_insurance_products(
     db: Session,
     insurance_type: str | None = None,
-    company_code: str | None = None
+    company_name: str | None = None
 ):
     query = db.query(InsuranceProduct)
 
@@ -119,9 +119,24 @@ def get_insurance_products(
             )
         )
 
-    if company_code:
+    if company_name:
         query = query.filter(
-            InsuranceProduct.company_code == company_code
+            InsuranceProduct.company_name == company_name
         )
 
     return query.all()
+
+
+def get_insurance_product(
+    db: Session,
+    company_code: str,
+    insurance_name: str,
+):
+    return (
+        db.query(InsuranceProduct)
+        .filter(
+            InsuranceProduct.company_code == company_code,
+            InsuranceProduct.insurance_name == insurance_name,
+        )
+        .first()
+    )
