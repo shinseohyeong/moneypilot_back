@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.services.financial_product_service import get_deposit_products, get_saving_products, sync_deposit_products, sync_saving_products, get_insurance_products, sync_insurance_products, recommend_deposit_products, recommend_saving_products, recommend_insurance_products
 from app.clients.financial_product_client import fetch_deposit_products
-from app.schemas.financial_product_schema import DepositProductResponse, SavingProductResponse, DepositRecommendResponse, SavingRecommendResponse, InsuranceProductResponse, InsuranceRecommendResponse, DepositRecommendRequest
+from app.schemas.financial_product_schema import DepositProductResponse, SavingProductResponse, DepositRecommendResponse, SavingRecommendResponse, InsuranceProductResponse, InsuranceRecommendResponse, DepositRecommendRequest, InsuranceRecommendRequest
 
 router = APIRouter(tags=["Financial Products"])
 
@@ -103,16 +103,13 @@ def recommend_savings_products(
     response_model=list[InsuranceRecommendResponse]
 )
 def recommend_insurances(
-    gender: str,
-    insurance_type: str | None = None,
-    company_name: str | None = None,
-    limit: int = 5,
+    request: InsuranceRecommendRequest,
     db: Session = Depends(get_db),
 ):
     return recommend_insurance_products(
         db=db,
-        gender=gender,
-        insurance_type=insurance_type,
-        company_name=company_name,
-        limit=limit,
+        gender=request.gender,
+        insurance_type=request.insurance_type,
+        company_name=request.company_name,
+        limit=request.limit,
     )
