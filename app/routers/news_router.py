@@ -142,6 +142,7 @@ def collect_stock_news(
         query=request.query,
         display=request.display,
         sort=request.sort,
+        days=request.days,
     )
 
 

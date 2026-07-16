@@ -189,12 +189,22 @@ class StockAlertRepository:
             .count()
         )
 
-    def get_alert_by_id(self, alert_id: int) -> Optional[StockAlert]:
+    def get_user_alert_by_id(
+        self,
+        alert_id: int,
+        user_id: int,
+    ) -> Optional[StockAlert]:
         """
-        알림 1건을 조회합니다.
+        특정 사용자의 알림 1건을 조회합니다.
+
+        alert_id와 user_id를 함께 검사하여
+        다른 사용자의 알림에 접근하지 못하도록 합니다.
         """
         return (
             self.db.query(StockAlert)
-            .filter(StockAlert.id == alert_id)
+            .filter(
+                StockAlert.id == alert_id,
+                StockAlert.user_id == user_id,
+            )
             .first()
         )

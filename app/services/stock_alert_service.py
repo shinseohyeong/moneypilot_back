@@ -184,11 +184,18 @@ class StockAlertService:
             ],
         )
 
-    def mark_alert_as_read(self, alert_id: int) -> StockAlertReadResponse:
+    def mark_alert_as_read(
+        self,
+        alert_id: int,
+        user_id: int,
+    ) -> StockAlertReadResponse:
         """
-        알림 1건을 읽음 처리합니다.
+        로그인 사용자의 알림 1건을 읽음 처리합니다.
         """
-        alert = self.repository.get_alert_by_id(alert_id=alert_id)
+        alert = self.repository.get_user_alert_by_id(
+            alert_id=alert_id,
+            user_id=user_id,
+        )
 
         if not alert:
             raise HTTPException(
@@ -196,17 +203,28 @@ class StockAlertService:
                 detail="해당 알림을 찾을 수 없습니다.",
             )
 
-        alert.is_read = True
-        alert.read_at = datetime.now()
+        try:
+            # 이미 읽은 알림이면 기존 읽은 시간을 유지합니다.
+            if not alert.is_read:
+                alert.is_read = True
+                alert.read_at = datetime.now()
 
-        self.db.commit()
-        self.db.refresh(alert)
+                self.db.commit()
+                self.db.refresh(alert)
 
-        return StockAlertReadResponse(
-            alert_id=alert.id,
-            is_read=alert.is_read,
-            read_at=alert.read_at,
-        )
+            return StockAlertReadResponse(
+                alert_id=alert.id,
+                is_read=alert.is_read,
+                read_at=alert.read_at,
+            )
+
+        except Exception as e:
+            self.db.rollback()
+
+            raise HTTPException(
+                status_code=500,
+                detail=f"알림 읽음 처리 중 오류가 발생했습니다: {str(e)}",
+            )
 
     # ------------------------------------------------------------
     # 내부 판단 함수

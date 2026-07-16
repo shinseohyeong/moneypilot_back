@@ -35,7 +35,7 @@ class YoutubeSearchService:
     def search_youtube_videos(
         self,
         query: str,
-        max_results: int = 5,
+        max_results: int = 6,
         order: str = "date",
     ) -> YoutubeSearchResponse:
         """

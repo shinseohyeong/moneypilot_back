@@ -81,6 +81,7 @@ class EconomyNewsCollectRequest(BaseModel):
     query: str = Field(default="경제", min_length=1, max_length=100)
     display: int = Field(default=10, ge=1, le=100)
     sort: str = Field(default="date")
+    days: int = Field(default=30, ge=1, le=90)
 
 
 class StockNewsCollectRequest(BaseModel):
@@ -93,6 +94,7 @@ class StockNewsCollectRequest(BaseModel):
     query: Optional[str] = Field(default=None, max_length=100)
     display: int = Field(default=10, ge=1, le=100)
     sort: str = Field(default="date")
+    days: int = Field(default=30, ge=1, le=90)
 
 
 class NewsCollectResponse(BaseModel):

@@ -35,7 +35,7 @@ def get_youtube_search_service(
 )
 def search_youtube_videos(
     query: str = Query(..., description="검색어 예: 오늘 경제 뉴스, 금리 교육 영상"),
-    max_results: int = Query(default=5, ge=1, le=10),
+    max_results: int = Query(default=6, ge=1, le=10),
     order: str = Query(default="date", description="date, relevance, viewCount"),
     service: YoutubeSearchService = Depends(get_youtube_search_service),
 ) -> YoutubeSearchResponse:

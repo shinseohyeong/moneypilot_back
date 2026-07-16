@@ -28,7 +28,7 @@ class YoutubeClient:
     def search_videos(
         self,
         query: str,
-        max_results: int = 5,
+        max_results: int = 6,
         order: str = "date",
     ) -> List[Dict[str, Any]]:
         """

@@ -304,21 +304,28 @@ def get_stock_report(
     """
     return service.get_stock_report(report_id=report_id)
 
+
 @router.post(
     "/alerts/generate",
     response_model=StockAlertGenerateResponse,
     summary="관심종목 뉴스 알림 생성",
 )
 def generate_stock_alerts(
-    user_id: int,
-    days: int = 7,
+    days: int = Query(
+        default=7,
+        ge=1,
+        le=30,
+        description="최근 며칠간의 뉴스를 확인할지",
+    ),
+    current_user: User = Depends(get_current_user),
     service: StockAlertService = Depends(get_stock_alert_service),
 ):
     """
-    사용자의 관심종목 관련 최근 뉴스를 기반으로 대시보드 알림을 생성합니다.
+    로그인 사용자의 관심종목 관련 최근 뉴스를 기반으로
+    대시보드 알림을 생성합니다.
     """
     return service.generate_stock_alerts(
-        user_id=user_id,
+        user_id=current_user.id,
         days=days,
     )
 
@@ -329,16 +336,24 @@ def generate_stock_alerts(
     summary="관심종목 뉴스 알림 목록 조회",
 )
 def list_stock_alerts(
-    user_id: int,
-    unread_only: bool = False,
-    limit: int = 50,
+    unread_only: bool = Query(
+        default=False,
+        description="읽지 않은 알림만 조회할지",
+    ),
+    limit: int = Query(
+        default=50,
+        ge=1,
+        le=100,
+        description="조회할 최대 알림 개수",
+    ),
+    current_user: User = Depends(get_current_user),
     service: StockAlertService = Depends(get_stock_alert_service),
 ):
     """
-    사용자의 관심종목 뉴스 알림 목록을 조회합니다.
+    로그인 사용자의 관심종목 뉴스 알림 목록을 조회합니다.
     """
     return service.list_stock_alerts(
-        user_id=user_id,
+        user_id=current_user.id,
         unread_only=unread_only,
         limit=limit,
     )
@@ -350,13 +365,21 @@ def list_stock_alerts(
     summary="관심종목 뉴스 알림 읽음 처리",
 )
 def mark_stock_alert_as_read(
-    alert_id: int,
+    alert_id: int = Path(
+        ...,
+        ge=1,
+        description="읽음 처리할 알림 ID",
+    ),
+    current_user: User = Depends(get_current_user),
     service: StockAlertService = Depends(get_stock_alert_service),
 ):
     """
-    알림 1건을 읽음 처리합니다.
+    로그인 사용자의 알림 1건을 읽음 처리합니다.
     """
-    return service.mark_alert_as_read(alert_id=alert_id)
+    return service.mark_alert_as_read(
+        alert_id=alert_id,
+        user_id=current_user.id,
+    )
 
 
 # ====================

@@ -5,8 +5,10 @@
 #   - commit/rollback은 하지 않습니다.
 # ============================================================
 
+from decimal import Decimal
 from typing import List, Optional, Tuple
 
+from sqlalchemy.dialects.mysql import insert as mysql_insert
 from sqlalchemy.orm import Session
 
 from app.models.news_model import NewsArticle, NewsSectorMapping, NewsSummary
@@ -76,6 +78,45 @@ class NewsSectorRepository:
         self.db.add(mapping)
         self.db.flush()
         return mapping
+    
+    def upsert_mapping(
+        self,
+        news_id: int,
+        sector_id: int,
+        matched_keywords: List[str],
+        relevance_score: Decimal,
+    ) -> NewsSectorMapping:
+        """
+        뉴스-섹터 매핑을 저장합니다.
+
+        같은 news_id, sector_id 조합이 이미 있으면
+        키워드와 관련도 점수를 갱신합니다.
+        """
+        statement = mysql_insert(NewsSectorMapping).values(
+            news_id=news_id,
+            sector_id=sector_id,
+            matched_keywords=matched_keywords,
+            relevance_score=relevance_score,
+        )
+
+        statement = statement.on_duplicate_key_update(
+            matched_keywords=statement.inserted.matched_keywords,
+            relevance_score=statement.inserted.relevance_score,
+        )
+
+        self.db.execute(statement)
+        self.db.flush()
+
+        mapping = self.get_mapping(
+            news_id=news_id,
+            sector_id=sector_id,
+        )
+
+        if not mapping:
+            raise RuntimeError("뉴스-섹터 매핑 저장 결과를 조회하지 못했습니다.")
+
+        return mapping
+
 
     def list_news_sector_mappings(
         self,
