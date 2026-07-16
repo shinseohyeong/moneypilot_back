@@ -8,7 +8,10 @@
 # Service에서 비즈니스 로직을 처리하고
 # Repository는 DB CRUD만 담당
 # ==========================================
-from datetime import date
+from datetime import date, datetime
+from decimal import Decimal
+from zoneinfo import ZoneInfo
+
 from sqlalchemy import func
 
 from app.models.user_model import User
@@ -17,9 +20,56 @@ from app.models.transaction_model import Transaction
 from app.models.admin_model import (TokenUsageLog, TokenLimitSetting)
 from app.models.financial_product_model import (DepositProduct, SavingProduct, InsuranceProduct)
 
+KST = ZoneInfo("Asia/Seoul")
+
 class AdminRepository:
     def __init__(self, db):
         self.db = db
+        
+    # ==========================================
+    # 토큰 사용량 저장
+    # ==========================================
+    def create_token_usage_log(
+        self,
+        *,
+        user_id: int,
+        feature_type: str,
+        model_name: str,
+        prompt_tokens: int = 0,
+        completion_tokens: int = 0,
+        embedding_tokens: int = 0,
+        estimated_cost: Decimal = Decimal("0"),
+    ):
+        prompt_tokens = int(prompt_tokens or 0)
+        completion_tokens = int(completion_tokens or 0)
+        embedding_tokens = int(embedding_tokens or 0)
+
+        usage_log = TokenUsageLog(
+            user_id=user_id,
+            feature_type=feature_type,
+            model_name=model_name,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            embedding_tokens=embedding_tokens,
+            total_tokens=(
+                prompt_tokens
+                + completion_tokens
+                + embedding_tokens
+            ),
+            estimated_cost=estimated_cost,
+            usage_date=datetime.now(KST).date(),
+        )
+
+        try:
+            self.db.add(usage_log)
+            self.db.commit()
+            self.db.refresh(usage_log)
+
+            return usage_log
+
+        except Exception:
+            self.db.rollback()
+            raise
     
     # ==========================================
     # 전체 회원 수

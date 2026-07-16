@@ -9,6 +9,12 @@ from pydantic import ValidationError
 from app.core.config import settings
 from app.schemas.spending_analysis import LLMReportResult
 
+import logging
+from sqlalchemy.orm import Session
+from app.repositories.admin_repository import AdminRepository
+
+logger = logging.getLogger(__name__)
+
 
 class SpendingLLMService:
     """
@@ -21,7 +27,14 @@ class SpendingLLMService:
     - Pydantic 스키마 검증
     """
 
-    def __init__(self):
+    def __init__(
+        self,
+        db: Session,
+    ):
+        self.db = db
+        
+        self.admin_repository = AdminRepository(db)
+        
         self.client = Client(
             host=settings.ollama_base_url.rstrip("/"),
             timeout=300.0,
@@ -30,6 +43,8 @@ class SpendingLLMService:
     def generate_spending_report(
         self,
         report_context: dict,
+        
+        user_id: int,
     ) -> dict:
         """
         소비 분석 context를 기반으로 AI 소비 코칭 리포트를 생성한다.
@@ -86,6 +101,60 @@ class SpendingLLMService:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="LLM 호출 중 오류가 발생했습니다.",
             ) from exc
+        
+        # Ollama 토큰 사용량 저장
+        try:
+            self.admin_repository.create_token_usage_log(
+                user_id=user_id,
+
+                # 관리자 페이지에서 기능별로 구분할 이름입니다.
+                feature_type="spending_report",
+
+                # Ollama가 반환한 모델명이 있으면 사용하고,
+                # 없으면 설정 파일의 모델명을 사용합니다.
+                model_name=(
+                    getattr(
+                        response,
+                        "model",
+                        None,
+                    )
+                    or settings.ollama_llm_model
+                ),
+
+                # 입력 토큰
+                prompt_tokens=(
+                    getattr(
+                        response,
+                        "prompt_eval_count",
+                        0,
+                    )
+                    or 0
+                ),
+
+                # 출력 토큰
+                completion_tokens=(
+                    getattr(
+                        response,
+                        "eval_count",
+                        0,
+                    )
+                    or 0
+                ),
+
+                # 소비 리포트에서는 임베딩하지 않으므로 0입니다.
+                embedding_tokens=0,
+
+                # Ollama는 로컬 모델이므로 비용은 0입니다.
+                estimated_cost=Decimal("0"),
+            )
+
+        except Exception as usage_error:
+            # 토큰 저장이 실패해도 소비 리포트 생성 자체는
+            # 정상적으로 진행되도록 예외를 다시 발생시키지 않습니다.
+            logger.warning(
+                "소비 리포트 토큰 사용량 저장 실패: %s",
+                usage_error,
+            )
 
         content = response.message.content
 
