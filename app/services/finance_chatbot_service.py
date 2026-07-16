@@ -48,7 +48,6 @@ class FinanceChatbotService:
 
         risk_context = self._get_risk_context(
             user_id=request.user_id,
-            finance_profile=finance_profile,
         )
 
         disclaimer = self._get_investment_disclaimer()
@@ -449,63 +448,18 @@ class FinanceChatbotService:
     def _get_risk_context(
         self,
         user_id: int,
-        finance_profile,
     ) -> Dict[str, str]:
         """
-        UserRiskContextService를 우선 사용해서 투자성향 기준을 통일한다.
-
-        만약 기존 service의 메서드명이 다르면,
-        이 함수 내부만 네 프로젝트에 맞게 수정하면 된다.
+        공통 UserRiskContextService에서 투자성향 정보를 조회합니다.
         """
-        try:
-            if hasattr(self.user_risk_context_service, "get_user_risk_context"):
-                context = self.user_risk_context_service.get_user_risk_context(user_id)
-
-                if isinstance(context, dict):
-                    return {
-                        "risk_type": context.get("risk_type", "NORMAL"),
-                        "risk_label": context.get("risk_label", "보통형"),
-                    }
-
-                return {
-                    "risk_type": getattr(context, "risk_type", "NORMAL"),
-                    "risk_label": getattr(context, "risk_label", "보통형"),
-                }
-        except Exception:
-            pass
-
-        raw_risk_type = getattr(finance_profile, "risk_type", None)
-
-        risk_type = self._normalize_risk_type(raw_risk_type)
-        risk_label = self._risk_type_to_label(risk_type)
+        context = self.user_risk_context_service.get_user_risk_context(
+            user_id=user_id,
+        )
 
         return {
-            "risk_type": risk_type,
-            "risk_label": risk_label,
+            "risk_type": context["risk_type"],
+            "risk_label": context["risk_label"],
         }
-
-    def _normalize_risk_type(self, raw_risk_type: Optional[str]) -> str:
-        if raw_risk_type is None:
-            return "NORMAL"
-
-        value = str(raw_risk_type).strip().lower()
-
-        if value in ["conservative", "safe", "안전형"]:
-            return "SAFE"
-
-        if value in ["aggressive", "공격형", "위험형"]:
-            return "AGGRESSIVE"
-
-        return "NORMAL"
-
-    def _risk_type_to_label(self, risk_type: str) -> str:
-        if risk_type == "SAFE":
-            return "안전형"
-
-        if risk_type == "AGGRESSIVE":
-            return "위험형"
-
-        return "보통형"
 
     def _get_risk_based_message(
         self,
@@ -520,20 +474,22 @@ class FinanceChatbotService:
 
         if risk_type == "SAFE":
             return (
-                "안전형 성향에서는 여유자금이 있더라도 손실 가능성을 크게 고려해야 합니다. "
-                "비상금과 필수 생활비를 먼저 확보한 뒤, 아주 보수적인 기준으로 판단하는 것이 좋습니다."
+                "안정형 성향에서는 여유자금이 있더라도 손실 가능성을 크게 고려해야 합니다. "
+                "비상금과 필수 생활비를 먼저 확보한 뒤, "
+                "보수적인 기준으로 판단하는 것이 좋습니다."
             )
 
         if risk_type == "AGGRESSIVE":
             return (
-                "위험형 성향에서는 성장 가능성이 있는 자산에 관심을 가질 수 있지만, "
+                "공격형 성향에서는 성장 가능성이 있는 자산에 관심을 가질 수 있지만, "
                 "여유자금 범위를 넘어서면 손실 발생 시 생활 안정성이 흔들릴 수 있습니다. "
                 "변동성과 원금 손실 가능성을 반드시 함께 고려해야 합니다."
             )
 
         return (
-            "보통형 성향에서는 소비, 저축, 투자 사이의 균형이 중요합니다. "
-            "여유자금이 있더라도 전액을 투자 관점으로 보기보다는 비상금과 단기 지출 계획을 함께 고려하는 것이 좋습니다."
+            "중립형 성향에서는 소비, 저축, 투자 사이의 균형이 중요합니다. "
+            "여유자금이 있더라도 전액을 투자 관점으로 보기보다는 "
+            "비상금과 단기 지출 계획을 함께 고려하는 것이 좋습니다."
         )
 
     def _build_top_category_text(
