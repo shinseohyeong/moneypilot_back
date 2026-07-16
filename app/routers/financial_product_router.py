@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.services.financial_product_service import get_deposit_products, get_saving_products, sync_deposit_products, sync_saving_products, get_insurance_products, sync_insurance_products, recommend_deposit_products, recommend_saving_products, recommend_insurance_products
 from app.clients.financial_product_client import fetch_deposit_products
-from app.schemas.financial_product_schema import DepositProductResponse, SavingProductResponse, DepositRecommendResponse, SavingRecommendResponse, InsuranceProductResponse, InsuranceRecommendResponse
+from app.schemas.financial_product_schema import DepositProductResponse, SavingProductResponse, DepositRecommendResponse, SavingRecommendResponse, InsuranceProductResponse, InsuranceRecommendResponse, DepositRecommendRequest
 
 router = APIRouter(tags=["Financial Products"])
 
@@ -65,22 +65,18 @@ def sync_insurances(db: Session = Depends(get_db)):
 
 
 @router.post(
-        "/deposits/recommend",
-        response_model=list[DepositRecommendResponse],
-        )
-def recommend_deposits_products(
-    deposit_amount: int,    # 예금 맡기는 금액
-    term: int,
+    "/deposits/recommend",
+    response_model=list[DepositRecommendResponse],
+)
+def recommend_deposits(
+    request: DepositRecommendRequest,
     db: Session = Depends(get_db),
-    preferred_bank: str | None = None,
-    limit: int = 5,
 ):
     return recommend_deposit_products(
         db=db,
-        deposit_amount=deposit_amount,
-        term=term,
-        limit=limit,
-        preferred_bank=preferred_bank,
+        deposit_amount=request.deposit_amount,
+        term=request.term,
+        preferred_bank=request.preferred_bank,
     )
 
 @router.post(
