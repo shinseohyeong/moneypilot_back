@@ -90,3 +90,9 @@ class InsuranceRecommendResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class DepositRecommendRequest(BaseModel):
+    deposit_amount: int
+    term: int
+    preferred_bank: str | None = None
