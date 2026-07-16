@@ -10,10 +10,10 @@
 
 import hashlib
 import re
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from email.utils import parsedate_to_datetime
-from typing import Dict, Optional
+from typing import Dict, Optional, Any, List
 from urllib.parse import urlparse
 
 from fastapi import HTTPException
@@ -33,6 +33,76 @@ class NewsService:
         self.db = db
         self.repository = NewsRepository(db)
         self.client = NaverNewsClient()
+
+    def _collect_news_within_days(
+        self,
+        query: str,
+        days: int,
+        display: int = 100,
+        sort: str = "date",
+    ) -> List[Dict[str, Any]]:
+        """
+        최근 days일 이내의 네이버 뉴스를 페이지 단위로 수집합니다.
+        """
+        if days <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail="days는 1 이상이어야 합니다.",
+            )
+
+        cutoff_datetime = (
+            datetime.now(timezone.utc) - timedelta(days=days)
+        )
+
+        collected_items: List[Dict[str, Any]] = []
+
+        page_size = max(1, min(display, 100))
+        start = 1
+        max_pages = 5
+
+        for _ in range(max_pages):
+            response = self.client.search_news(
+                query=query,
+                display=page_size,
+                start=start,
+                sort=sort,
+            )
+
+            raw_items = response.get("items", [])
+
+            if not raw_items:
+                break
+
+            reached_cutoff = False
+
+            for item in raw_items:
+                pub_date = item.get("pubDate")
+
+                if not pub_date:
+                    continue
+
+                try:
+                    published_at = parsedate_to_datetime(pub_date)
+
+                    if published_at.tzinfo is None:
+                        published_at = published_at.replace(
+                            tzinfo=timezone.utc,
+                        )
+                except Exception:
+                    continue
+
+                if published_at < cutoff_datetime:
+                    reached_cutoff = True
+                    continue
+
+                collected_items.append(item)
+
+            if reached_cutoff or len(raw_items) < page_size:
+                break
+
+            start += page_size
+
+        return collected_items
 
     # ------------------------------------------------------------
     # 경제 뉴스 수집
@@ -113,8 +183,9 @@ class NewsService:
         self,
         stock_id: int,
         query: Optional[str] = None,
-        display: int = 10,
+        display: int = 100,
         sort: str = "date",
+        days: int = 30,
     ) -> Dict:
         """
         특정 종목 뉴스 수집
@@ -135,14 +206,12 @@ class NewsService:
         search_query = normalized_query or f"{stock.stock_name} 주식"
 
         try:
-            naver_response = self.client.search_news(
+            raw_items = self._collect_news_within_days(
                 query=search_query,
+                days=days,
                 display=display,
-                start=1,
                 sort=sort,
             )
-
-            raw_items = naver_response.get("items", [])
 
             saved_items = []
             response_items = []
@@ -150,9 +219,11 @@ class NewsService:
             mapped_count = 0
 
             for item in raw_items:
-                article, is_created = self._get_or_create_article_from_naver_item(
-                    item=item,
-                    search_keyword=search_query,
+                article, is_created = (
+                    self._get_or_create_article_from_naver_item(
+                        item=item,
+                        search_keyword=search_query,
+                    )
                 )
 
                 if is_created:
@@ -160,7 +231,6 @@ class NewsService:
                 else:
                     duplicated_count += 1
 
-                # 뉴스와 종목 연결이 없으면 새로 연결합니다.
                 existing_mapping = self.repository.get_stock_mapping(
                     news_id=article.id,
                     stock_id=stock_id,
@@ -171,9 +241,9 @@ class NewsService:
                         news_id=article.id,
                         stock_id=stock_id,
                         matched_keyword=stock.stock_name,
-                        # 1차 MVP에서는 정교한 관련도 계산 없이 기본 점수 부여
                         relevance_score=Decimal("100.00"),
                     )
+
                     self.repository.create_stock_mapping(mapping)
                     mapped_count += 1
 
@@ -183,19 +253,25 @@ class NewsService:
 
             return {
                 "query": search_query,
+                "days": days,
                 "requested_count": display,
                 "fetched_count": len(raw_items),
                 "saved_count": len(saved_items),
                 "duplicated_count": duplicated_count,
                 "mapped_count": mapped_count,
-                "items": [self._to_article_response(item) for item in response_items],
+                "items": [
+                    self._to_article_response(item)
+                    for item in response_items
+                ],
             }
 
         except HTTPException:
             self.db.rollback()
             raise
+
         except Exception as e:
             self.db.rollback()
+
             raise HTTPException(
                 status_code=500,
                 detail=f"종목 뉴스 수집 중 오류가 발생했습니다: {str(e)}",
