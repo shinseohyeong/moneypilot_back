@@ -1,7 +1,7 @@
 """
 유저 프로필 RAG 문서를 검색/삭제하는 retriever 모듈
 """
-from app.rag.rag_constants import RagDomain, RagFeature
+from app.rag.metadata import RagDomain
 from app.rag.rag_service import (
     search_rag_documents,
     delete_rag_documents_by_user,
@@ -21,9 +21,8 @@ class UserProfileRetriever:
         return search_rag_documents(
             query=query,
             user_id=user_id,
-            domain=RagDomain.USER_PROFILE,
+            domain=RagDomain.FINANCE_PROFILE,
             n_results=n_results,
-            extra_filters={"feature": RagFeature.FINANCE_PROFILE},
         )
 
     def delete_user_profile_docs(
