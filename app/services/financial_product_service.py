@@ -166,7 +166,11 @@ def sync_insurance_products(db: Session):
                 insurance_name=product.get("prdNm"),
                 insurance_type=product.get("ptrn"),
                 description=product.get("mog"),
-                age=product.get("age"),
+                age = (
+                    None
+                    if product.get("age") in ["-1", "0", None, ""]
+                    else int(product.get("age"))
+                ),
                 male_insurance_rate=product.get("mlInsRt"),
                 female_insurance_rate=product.get("fmlInsRt"),
             )
@@ -179,7 +183,11 @@ def sync_insurance_products(db: Session):
             insurance_product.insurance_name = product.get("prdNm")
             insurance_product.insurance_type = product.get("ptrn")
             insurance_product.description = product.get("mog")
-            insurance_product.age = product.get("age")
+            insurance_product.age = (
+                None
+                if product.get("age") in ["-1", "0", None, ""]
+                else int(product.get("age"))
+            )
             insurance_product.male_insurance_rate = product.get("mlInsRt")
             insurance_product.female_insurance_rate = product.get("fmlInsRt")
 
@@ -359,10 +367,18 @@ def recommend_saving_products(
         })
     return result
 
+def parse_fee(value):
+    try:
+        fee = int(value)
+    except (TypeError, ValueError):
+        return 999999
+
+    return 999999 if fee == 0 else fee
 
 def recommend_insurance_products(
     db: Session,
     gender: str | None = None,
+    age: int | None = None,
     insurance_type: str | None = None,
     company_name: str | None = None,
     limit: int = 5,
@@ -373,18 +389,35 @@ def recommend_insurance_products(
         insurance_type=insurance_type,
     )
 
+    if age is not None:
+        ages = sorted({
+            p.age for p in products
+            if p.age is not None
+        })
+
+        if ages:
+            nearest_age = min(
+                ages,
+                key=lambda product_age: abs(int(product_age) - age)
+            )
+
+            products = [
+                p for p in products
+                if p.age is None or int(p.age) == nearest_age
+            ]
+
     # 성별 기준 보험료 오름차순 정렬
     if gender == "남자":
         products.sort(
-            key=lambda x: int(
-                x.male_insurance_rate or 999
+            key=lambda x: parse_fee(
+                x.male_insurance_rate
             )
         )
 
     elif gender == "여자":
         products.sort(
-            key=lambda x: int(
-                x.female_insurance_rate or 999
+            key=lambda x: parse_fee(
+                x.female_insurance_rate
             )
         )
 
