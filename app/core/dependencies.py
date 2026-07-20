@@ -48,3 +48,14 @@ def get_current_user(
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "존재하지 않거나 비활성화된 사용자입니다.")
 
     return user
+
+def admin_required(
+    current_user=Depends(get_current_user)
+):
+    if current_user.role != "ADMIN":
+        raise HTTPException(
+            status_code=403,
+            detail="관리자만 접근 가능합니다."
+        )
+
+    return current_user

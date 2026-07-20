@@ -24,6 +24,7 @@ from app.schemas.admin_schema import (
     ProductLastUpdateResponse,
 )
 from app.services.admin_service import AdminService
+from app.core.dependencies import admin_required
 
 router = APIRouter()
 
@@ -39,6 +40,7 @@ router = APIRouter()
 )
 async def dashboard(
     db: Session = Depends(get_db),
+    _ = Depends(admin_required),
 ):
     service = AdminService(db)
     return service.get_dashboard()
@@ -55,6 +57,7 @@ async def dashboard(
 )
 async def get_user_token_usage(
     db: Session = Depends(get_db),
+    _ = Depends(admin_required),
 ):
     service = AdminService(db)
     return service.get_user_token_usage()
@@ -71,6 +74,7 @@ async def get_user_token_usage(
 )
 async def get_feature_token_usage(
     db: Session = Depends(get_db),
+    _ = Depends(admin_required),
 ):
     service = AdminService(db)
     return service.get_feature_token_usage()
@@ -87,6 +91,7 @@ async def get_feature_token_usage(
 )
 async def get_daily_cost(
     db: Session = Depends(get_db),
+    _ = Depends(admin_required),
 ):
     service = AdminService(db)
     return service.get_daily_cost()
@@ -103,6 +108,7 @@ async def get_daily_cost(
 )
 async def get_token_limit(
     db: Session = Depends(get_db),
+    _ = Depends(admin_required),
 ):
     service = AdminService(db)
     return service.get_token_limit()
@@ -120,6 +126,7 @@ async def get_token_limit(
 async def update_token_limit(
     request: TokenLimitUpdateRequest,
     db: Session = Depends(get_db),
+    _ = Depends(admin_required),
 ):
     service = AdminService(db)
     return service.update_token_limit(request.daily_token_limit)
@@ -136,6 +143,7 @@ async def update_token_limit(
 )
 async def get_system_status(
     db: Session = Depends(get_db),
+    _ = Depends(admin_required),
 ):
     service = AdminService(db)
     return service.get_system_status()
@@ -152,6 +160,7 @@ async def get_system_status(
 )
 async def get_product_last_update(
     db: Session = Depends(get_db),
+    _ = Depends(admin_required),
 ):
     service = AdminService(db)
     return service.get_financial_product_last_update()
