@@ -13,7 +13,6 @@
 from pathlib import Path
 import os
 from datetime import datetime
-import pandas as pd
 from fastapi import UploadFile, HTTPException
 from sqlalchemy.orm import Session
 import uuid
@@ -22,7 +21,6 @@ from app.models import (
     CardStatement,
     Transaction
 )
-from app.services.parser import parse_excel
 from app.repositories.card_statement_repository import FileRepository
 from app.repositories.transaction_repository import TransactionRepository
 from app.services.vision_service import VisionService
@@ -135,31 +133,17 @@ class FileService:
 
         return self.file_repository.save(statement)
 
-    # ===============================
-    # 3. 거래내역 파싱
-    # 엑셀 컬럼
+    # ======================================
+    # 3. Vision 거래내역 추출
     # 거래일
     # 가맹점명
     # 금액 ...
     # ↓
     # DB 저장용 dictionary 변환
-    # ===============================
-    def parse_transactions(
-        self,
-        df,
-        card_name
-    ):
-        return parse_excel(
-            df,
-            card_name
-        )
-
-    # ======================================
-    # Vision 거래내역 추출
     # ======================================
     def parse_card_statement(
         self,
-        file_path: str
+        file_path: str,
     ):
         return self.vision_service.extract_transactions(file_path)
     # ===============================
@@ -181,36 +165,6 @@ class FileService:
             )
 
             self.transaction_repository.save(transaction)
-
-    # ===============================
-    # 2. 엑셀 읽기
-    # xlsx / xls 파일을 pandas DataFrame으로 변환
-    # ===============================
-    def read_excel(
-        self,
-        file_path: str
-    ):
-        file_path = str(file_path)
-        suffix = Path(file_path).suffix.lower()
-
-        if file_path.endswith(".xlsx"):
-            df = pd.read_excel(
-                file_path,
-                engine="openpyxl"
-            )
-
-        elif file_path.endswith(".xls"):
-            df = pd.read_excel(
-                file_path,
-                engine="xlrd"
-            )
-
-        else:
-            raise HTTPException(
-                status_code=404,
-                detail="파일이 존재하지 않습니다."
-            )
-        return df
     
     # ======================================
     # 업로드 파일 목록 조회
