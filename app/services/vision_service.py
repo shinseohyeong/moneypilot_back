@@ -14,7 +14,7 @@ class VisionService:
     # ======================================
     def extract_transactions(
         self,
-        file_path: str
+        file_path: str,
     ):
         transactions = vision_parser(file_path)
         # 후처리

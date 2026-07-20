@@ -109,6 +109,7 @@ def recommend_insurances(
     return recommend_insurance_products(
         db=db,
         gender=request.gender,
+        age=request.age,
         insurance_type=request.insurance_type,
         company_name=request.company_name,
         limit=request.limit,

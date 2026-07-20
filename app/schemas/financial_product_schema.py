@@ -100,6 +100,7 @@ class DepositRecommendRequest(BaseModel):
 
 class InsuranceRecommendRequest(BaseModel):
     gender: str
+    age: int
     insurance_type: str | None = None
     company_name: str | None = None
     limit: int = 5

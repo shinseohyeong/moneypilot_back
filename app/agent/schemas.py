@@ -11,6 +11,8 @@ AgentAction = Literal[
     "stock_price",
     "stock_news",
     "agent_chat_rag",
+    "finance_profile",
+    "risk_profile",
     "general",
 ]
 

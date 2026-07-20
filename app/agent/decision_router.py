@@ -77,6 +77,8 @@ def decide_agent_action(
 - stock_price
 - stock_news
 - agent_chat_rag
+- finance_profile
+- risk_profile
 - general
 
 month가 필요한 action이면 YYYY-MM 형식으로 반환하고,
