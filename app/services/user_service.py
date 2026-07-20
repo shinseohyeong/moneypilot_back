@@ -8,10 +8,8 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.security import hash_password
-from app.models.user_model import User
-from app.schemas.user import UserProfileUpdate
-
 from app.models.user_model import User, RefreshToken
+from app.schemas.user import UserProfileUpdate
 from app.rag.retrievers.user_profile_retriever import UserProfileRetriever
 
 logger = logging.getLogger(__name__)
@@ -38,6 +36,7 @@ def update_profile(db: Session, current_user: User, body: UserProfileUpdate) -> 
     db.refresh(current_user)
     return current_user
 
+
 def withdraw_user(db: Session, user_id: int) -> None:
     """
     회원 탈퇴 (soft delete).
@@ -49,8 +48,8 @@ def withdraw_user(db: Session, user_id: int) -> None:
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(
-            status.HTTP_404_NOT_FOUND,
-            "사용자를 찾을 수 없습니다.",
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="사용자를 찾을 수 없습니다.",
         )
 
     # 1. 계정 비활성화
@@ -64,10 +63,12 @@ def withdraw_user(db: Session, user_id: int) -> None:
     db.commit()
     logger.info(f"회원 탈퇴 처리 완료 — user_id={user_id}")
 
-    # 3. RAG 개인 문서 삭제 (DB 처리 완료 후)
+    # 3. RAG 개인 문서 삭제 (DB 처리 완료 후 실행)
     try:
         retriever = UserProfileRetriever()
-        retriever.delete_user_profile_docs(user_id)
+        # user_id를 명시적으로 인자로 전달하여 해당 유저의 프로필 RAG 문서를 일괄 삭제
+        retriever.delete_user_profile_docs(user_id=user_id)
         logger.info(f"RAG 문서 삭제 완료 — user_id={user_id}")
-    except Exception:
-        logger.exception(f"RAG 문서 삭제 실패 — user_id={user_id}")
+    except Exception as e:
+        # RAG 서버 호출 실패 등이 실제 DB의 탈퇴 처리까지 트랜잭션 롤백시키지 않도록 로깅만 수행
+        logger.exception(f"RAG 문서 삭제 실패 — user_id={user_id}: {e}")

@@ -14,6 +14,11 @@ from app.agent.tools.stock_price_tool import (
 from app.agent.tools.stock_news_rag_tool import (
     search_stock_news_rag_tool,
 )
+# 사용자님의 금융 프로필 툴 추가 임포트
+from app.agent.tools.finance_profile_tool import (
+    get_user_finance_profile_tool,
+    get_risk_profile_tool,
+)
 
 
 def run_registered_tool(
@@ -31,6 +36,8 @@ def run_registered_tool(
     - spending_category: 정확한 카테고리별 소비 DB 조회
     - spending_report: 소비 분석 RAG 검색
     - agent_chat_rag: 과거 Agent 대화 RAG 검색
+    - finance_profile: 금융 프로필 전체 조회 (mp_agent_001)
+    - risk_profile: 투자 위험 성향 단일 조회 (mp_agent_002)
     """
 
     if action == "spending_summary":
@@ -94,6 +101,21 @@ def run_registered_tool(
         return search_user_agent_chat_rag_tool(
             user_id=user_id,
             query=message,
+        )
+
+    # --------------------------------------------------
+    # mp_agent_001, mp_agent_002 분기 추가
+    # --------------------------------------------------
+    if action == "finance_profile":
+        return get_user_finance_profile_tool(
+            db=db,
+            user_id=user_id,
+        )
+
+    if action == "risk_profile":
+        return get_risk_profile_tool(
+            db=db,
+            user_id=user_id,
         )
 
     return {

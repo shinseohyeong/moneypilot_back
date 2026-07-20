@@ -71,26 +71,15 @@ def upload_file(
     current_user = Depends(get_current_user)
 ):
     service = FileService(db)
-    filename = file.filename.lower()
     # 1. 실제 파일 저장
     file_path = service.save_file(file)
-    # 기존 엑셀 처리
-    if filename.endswith((".xlsx", ".xls")):
-        # 2. 엑셀 읽기
-        df = service.read_excel(file_path)
-        # 3. 거래내역 파싱
-        transactions = service.parse_transactions(df, card_name)
-    # 이미지 비전처리
-    elif filename.endswith((".pdf", ".png", ".jpg", ".jpeg")):
-        transactions = service.parse_card_statement(str(file_path))
-        
-    else:
-        raise HTTPException(
-        status_code=400,
-        detail="지원하지 않는 파일 형식입니다."
+
+    # 2. Vision으로 거래내역 추출
+    transactions = service.parse_card_statement(
+        str(file_path),
     )
     
-    # 4. 명세서 + 거래내역 한번에 저장
+    # 3. 명세서 + 거래내역 한번에 저장
     statement = service.upload_process(
         user_id=current_user.id,
         file_name=file.filename,
@@ -104,7 +93,8 @@ def upload_file(
         "message": "파일 업로드 완료",
         "statement_id": statement.id,
         "file_name": file.filename,
-        "status": statement.status
+        "status": statement.status,
+        "month": transactions[0]["month"],
     }
 
 # ==========================================
