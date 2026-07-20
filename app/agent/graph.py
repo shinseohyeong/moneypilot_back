@@ -11,6 +11,10 @@ from app.agent.decision_router import decide_agent_action
 from app.agent.state import AgentState
 from app.agent.tool_registry import run_registered_tool
 
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 TOOL_ACTIONS = {
     "spending_summary",
@@ -28,9 +32,9 @@ def decide_action_node(
     state: AgentState,
 ) -> AgentState:
     """
-    사용자 질문을 분석해 action과 month를 결정한다.
+    사용자 질문과 최근 대화를 분석해
+    action, month, Tool 검색용 질문을 결정합니다.
     """
-
     decision = decide_agent_action(
         message=state["message"],
         history=state.get("history"),
@@ -39,6 +43,10 @@ def decide_action_node(
     return {
         "intent": decision.action,
         "month": decision.month,
+        "resolved_query": (
+            decision.resolved_query
+            or state["message"]
+        ),
         "error": None,
     }
 
@@ -67,12 +75,23 @@ def execute_tool_node(
 
     action = state["intent"]
 
+    tool_message = (
+        state.get("resolved_query")
+        or state["message"]
+    )
+
     result = run_registered_tool(
         db=db,
         action=action,
         user_id=state["user_id"],
-        message=state["message"],
+        message=tool_message,
         month=state.get("month"),
+    )
+
+    logger.info(
+        "[Agent Tool Query] original=%s, resolved=%s",
+        state["message"],
+        tool_message,
     )
 
     if action == "spending_report":
@@ -240,6 +259,7 @@ def run_agent_graph(
         "user_id": user_id,
         "session_id": session_id,
         "message": message,
+        "resolved_query": message,
         "month": None,
         "history": history or [],
         "intent": "general",
