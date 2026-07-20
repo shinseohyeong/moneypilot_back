@@ -280,6 +280,13 @@ def recommend_deposit_products(
             "before_tax_interest": item["before_tax_interest"],
             "after_tax_interest": item["after_tax_interest"],
             "maturity_amount": item["maturity_amount"],
+            "recommend_reason": (
+                f"{term}개월 기준 최고 금리 {item['max_rate']}% 상품이며 "
+                f"{preferred_bank} 선호 조건을 반영했습니다."
+                if preferred_bank
+                else
+                f"{term}개월 기준 최고 금리 {item['max_rate']}% 상품입니다."
+            )
         })
     return result
 
@@ -364,6 +371,13 @@ def recommend_saving_products(
             "before_tax_interest": item["before_tax_interest"],
             "after_tax_interest": item["after_tax_interest"],
             "maturity_amount": item["maturity_amount"],
+            "recommend_reason": (
+                f"{term}개월 기준 최고 금리 {item['max_rate']}% 상품이며 "
+                f"{preferred_bank} 선호 조건을 반영했습니다."
+                if preferred_bank
+                else
+                f"{term}개월 기준 최고 금리 {item['max_rate']}% 상품입니다."
+            )
         })
     return result
 
@@ -390,21 +404,13 @@ def recommend_insurance_products(
     )
 
     if age is not None:
-        ages = sorted({
-            p.age for p in products
-            if p.age is not None
-        })
+        age_products = [
+            p for p in products
+            if p.age is not None and int(p.age) == age
+        ]
 
-        if ages:
-            nearest_age = min(
-                ages,
-                key=lambda product_age: abs(int(product_age) - age)
-            )
-
-            products = [
-                p for p in products
-                if p.age is None or int(p.age) == nearest_age
-            ]
+        if age_products:
+            products = age_products
 
     # 성별 기준 보험료 오름차순 정렬
     if gender == "남자":

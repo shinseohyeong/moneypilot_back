@@ -31,6 +31,7 @@ class DepositRecommendResponse(BaseModel):
     maturity_amount: int
     before_tax_interest: int
     after_tax_interest: int
+    recommend_reason: str
 
 
 class SavingRateResponse(BaseModel):
@@ -63,6 +64,7 @@ class SavingRecommendResponse(BaseModel):
     maturity_amount: int
     before_tax_interest: int
     after_tax_interest: int
+    recommend_reason: str
 
 
 class InsuranceProductResponse(BaseModel):
@@ -95,6 +97,12 @@ class InsuranceRecommendResponse(BaseModel):
 class DepositRecommendRequest(BaseModel):
     deposit_amount: int
     term: int
+    preferred_bank: str | None = None
+
+
+class SavingRecommendRequest(BaseModel):
+    term: int
+    monthly_amount: int
     preferred_bank: str | None = None
 
 
