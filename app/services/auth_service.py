@@ -53,7 +53,7 @@ def login(db: Session, body: LoginRequest) -> dict:
     ))
     db.commit()
     logger.info(f"로그인 성공 — user_id={user.id}")
-    return {"access_token": access_token, "refresh_token": refresh_token_str}
+    return {"access_token": access_token, "refresh_token": refresh_token_str, "role": user.role,}
 
 
 def refresh_access_token(db: Session, refresh_token_str: str) -> str:
