@@ -76,7 +76,8 @@ def upload_file(
 
     # 2. Vision으로 거래내역 추출
     transactions = service.parse_card_statement(
-        str(file_path),
+        file_path=str(file_path),
+        user_id=current_user.id,
     )
     
     # 3. 명세서 + 거래내역 한번에 저장

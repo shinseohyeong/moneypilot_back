@@ -15,21 +15,30 @@ class VisionService:
     def extract_transactions(
         self,
         file_path: str,
+        db,
+        user_id: int,
     ):
-        transactions = vision_parser(file_path)
+        result = vision_parser(
+            file_path=file_path,
+            db=db,
+            user_id=user_id,
+        )
+
+        transactions = result["transactions"]
+        response = result["response"]
+
         # 후처리
         for tx in transactions:
 
-            # 날짜 문자열 → date 객체
             tx["transaction_date"] = datetime.strptime(
                 tx["transaction_date"],
                 "%Y-%m-%d"
             ).date()
 
-            # month 생성
             tx["month"] = tx["transaction_date"].strftime("%Y-%m")
-
-            # 금액 int 보장
             tx["amount"] = int(str(tx["amount"]).replace(",", ""))
 
-        return transactions
+        return {
+            "transactions": transactions,
+            "response": response,
+        }

@@ -53,6 +53,7 @@ def login(db: Session, body: LoginRequest) -> dict:
     ))
     db.commit()
     logger.info(f"로그인 성공 — user_id={user.id}")
+    # 관리자와 사용자를 구분해 사용자는 소비페이지, 관리자는 admin페이지로 이동하도록함.
     return {"access_token": access_token, "refresh_token": refresh_token_str, "role": user.role,}
 
 

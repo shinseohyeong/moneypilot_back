@@ -24,6 +24,7 @@ from app.models import (
 from app.repositories.card_statement_repository import FileRepository
 from app.repositories.transaction_repository import TransactionRepository
 from app.services.vision_service import VisionService
+from app.repositories.admin_repository import AdminRepository
 
 UPLOAD_DIR = Path("uploads")
 
@@ -33,6 +34,7 @@ class FileService:
         self.db = db
         self.file_repository = FileRepository(db)
         self.transaction_repository = TransactionRepository(db)
+        self.admin_repository = AdminRepository(db)
         self.vision_service = VisionService()
     # ===============================
     # 1. 파일 저장
@@ -144,8 +146,38 @@ class FileService:
     def parse_card_statement(
         self,
         file_path: str,
+        user_id: int,
     ):
-        return self.vision_service.extract_transactions(file_path)
+        result = self.vision_service.extract_transactions(file_path=file_path,
+    db=self.db,
+    user_id=user_id,)
+
+        transactions = result["transactions"]
+        response = result["response"]
+
+        usage = response.usage
+
+        prompt_tokens = getattr(usage, "input_tokens", 0)
+        completion_tokens = getattr(usage, "output_tokens", 0)
+
+        from decimal import Decimal
+
+        estimated_cost = (
+            (Decimal(prompt_tokens) / Decimal("1000000")) * Decimal("2.50")
+            + (Decimal(completion_tokens) / Decimal("1000000")) * Decimal("10.00")
+        )
+
+        self.admin_repository.create_token_usage_log(
+            user_id=user_id,
+            feature_type="ocr",
+            model_name=response.model,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            embedding_tokens=0,
+            estimated_cost=estimated_cost,
+        )
+
+        return transactions
     # ===============================
     # 4. 거래내역 DB 저장
     # transactions 테이블 INSERT
