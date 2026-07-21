@@ -77,6 +77,7 @@ class InsuranceProductResponse(BaseModel):
     age: str | None
     male_insurance_rate: str | None
     female_insurance_rate: str | None
+    recommend_reason: str | None = None
 
     class Config:
         from_attributes = True
@@ -89,6 +90,7 @@ class InsuranceRecommendResponse(BaseModel):
     insurance_type: str | None
     male_insurance_rate: str | None
     female_insurance_rate: str | None
+    recommend_reason: str
 
     class Config:
         from_attributes = True

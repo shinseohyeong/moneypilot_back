@@ -4,6 +4,8 @@ from app.clients.financial_product_client import fetch_deposit_products, fetch_s
 from app.repositories.financial_product_repository import (
     get_deposit_products, get_saving_products, get_insurance_products, get_insurance_product
 )
+from app.rag.recommend_reason import generate_reason
+from app.rag.vector_store import search_documents
 
 
 def sync_deposit_products(db: Session):
@@ -271,6 +273,30 @@ def recommend_deposit_products(
     for item in recommend_list[:limit]:
         product = item["product"]
 
+        # ChromaDB에서 관련 문서 검색
+        search_result = search_documents(
+            metadata = {
+            "type": "deposit",
+            "product_id": product.id
+        },
+            query=f"{product.bank_name} {product.product_name}",
+            top_k=1,
+        )
+
+        documents = search_result.get("documents", [])
+
+        if documents and documents[0]:
+            docs = documents[0]
+        else:
+            docs = []
+
+
+        print(docs)
+        recommend_reason = generate_reason(
+            question=f"{term}개월 동안 {deposit_amount}원을 예금하려고 합니다.",
+            documents=docs,
+        )
+
         result.append({
             "id": product.id,
             "bank_name": product.bank_name,
@@ -280,13 +306,7 @@ def recommend_deposit_products(
             "before_tax_interest": item["before_tax_interest"],
             "after_tax_interest": item["after_tax_interest"],
             "maturity_amount": item["maturity_amount"],
-            "recommend_reason": (
-                f"{term}개월 기준 최고 금리 {item['max_rate']}% 상품이며 "
-                f"{preferred_bank} 선호 조건을 반영했습니다."
-                if preferred_bank
-                else
-                f"{term}개월 기준 최고 금리 {item['max_rate']}% 상품입니다."
-            )
+            "recommend_reason": recommend_reason
         })
     return result
 
@@ -362,6 +382,30 @@ def recommend_saving_products(
     for item in recommend_list[:limit]:
         product = item["product"]
 
+        # 1. ChromaDB에서 관련 문서 검색
+        search_result = search_documents(
+            metadata = {
+            "type": "deposit",
+            "product_id": product.id
+        },
+            query=f"{product.bank_name} {product.product_name}",
+            top_k=1,
+        )
+
+        # 2. 검색된 문서 꺼내기
+        documents = search_result.get("documents", [])
+
+        if documents and documents[0]:
+            docs = documents[0]
+        else:
+            docs = []
+
+        # 3. LLM으로 추천 이유 생성
+        recommend_reason = generate_reason(
+            question=f"매달 {monthly_amount}원씩 {term}개월 적금하려고 합니다.",
+            documents=docs,
+        )
+
         result.append({
             "id": product.id,
             "bank_name": product.bank_name,
@@ -371,13 +415,7 @@ def recommend_saving_products(
             "before_tax_interest": item["before_tax_interest"],
             "after_tax_interest": item["after_tax_interest"],
             "maturity_amount": item["maturity_amount"],
-            "recommend_reason": (
-                f"{term}개월 기준 최고 금리 {item['max_rate']}% 상품이며 "
-                f"{preferred_bank} 선호 조건을 반영했습니다."
-                if preferred_bank
-                else
-                f"{term}개월 기준 최고 금리 {item['max_rate']}% 상품입니다."
-            )
+            "recommend_reason": recommend_reason
         })
     return result
 
@@ -427,5 +465,29 @@ def recommend_insurance_products(
             )
         )
 
-    # 상위 10개 추천
-    return products[:limit]
+    # 상위 limit개 추천
+    products = products[:limit]
+
+    for product in products:
+        search_result = search_documents(
+            metadata = {
+            "type": "deposit",
+            "product_id": product.id
+        },
+            query=f"{product.company_name} {product.insurance_name}",
+            top_k=1,
+        )
+
+        documents = search_result.get("documents", [])
+
+        if documents and documents[0]:
+            docs = documents[0]
+        else:
+            docs = []
+
+        product.recommend_reason = generate_reason(
+            question=f"{gender} {age}세에게 적합한 {product.insurance_name} 추천 이유",
+            documents=docs,
+        )
+
+    return products
