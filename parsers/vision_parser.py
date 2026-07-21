@@ -10,6 +10,9 @@ from pathlib import Path
 import os
 from fastapi import HTTPException
 
+from decimal import Decimal
+from app.repositories.admin_repository import AdminRepository
+
 client = OpenAI()
 
 PROMPT = """
@@ -154,6 +157,7 @@ def encode_file(file_path: str) -> str:
 def make_file_content(file_path: str):
     suffix = Path(file_path).suffix.lower()
     file_base64 = encode_file(file_path)
+
     if suffix in [".png", ".jpg", ".jpeg"]:
         return {
             "type": "input_image",
@@ -166,26 +170,19 @@ def make_file_content(file_path: str):
             "filename": Path(file_path).name,
             "file_data": f"data:application/pdf;base64,{file_base64}"
         }
-    
-    elif suffix in [".xlsx", ".xls", ".csv"]:
-        return {
-            "type": "input_file",
-            "filename": Path(file_path).name,
-            "file_data": (
-                "data:application/octet-stream;base64,"
-                + file_base64
-            )
-        }
 
     raise HTTPException(
         status_code=400,
-        detail="지원하지 않는 파일 형식입니다."
+        detail="지원하지 않는 파일 형식입니다. PDF, PNG, JPG만 업로드 가능합니다."
     )
 
 # ==========================================
 # Vision으로 카드 거래명세서 파싱
 # ==========================================
-def vision_parser(file_path: str):
+def vision_parser(
+    file_path: str,
+    db,
+    user_id: int,):
     try:
         response = client.responses.create(
             model=os.getenv(
@@ -205,6 +202,7 @@ def vision_parser(file_path: str):
                 }
             ]
         )
+        print(response.model_dump())
 
     except Exception as e:
         raise HTTPException(
@@ -220,7 +218,12 @@ def vision_parser(file_path: str):
     )
 
     try:
-        return json.loads(result)
+        transactions = json.loads(result)
+
+        return {
+            "transactions": transactions,
+            "response": response,
+        }
 
     except json.JSONDecodeError:
 
