@@ -8,6 +8,8 @@ class AgentState(TypedDict, total=False):
     session_id: int
 
     message: str
+    resolved_query: str
+
     month: str | None
     history: list[dict[str, Any]]
 

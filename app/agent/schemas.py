@@ -54,6 +54,8 @@ class AgentDecision(BaseModel):
 
     reason: str | None = None
 
+    resolved_query: str | None = None
+
 
 class AgentMessageResponse(BaseModel):
     id: int

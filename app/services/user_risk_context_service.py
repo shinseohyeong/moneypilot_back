@@ -2,7 +2,7 @@
 # 파일 위치: app/services/user_risk_context_service.py
 # 역할:
 #   - 사용자 투자성향을 조회/정규화합니다.
-#   - 팀원 사용자 자산 프로필 기능과 연결하기 전까지는 NORMAL 기본값을 사용합니다.
+#   - 금융 프로필이 없거나 투자성향 값이 유효하지 않으면 NORMAL 기본값을 사용합니다.
 #   - 리포트, 알림, 챗봇에서 공통으로 재사용할 투자성향별 해석 문구를 제공합니다.
 # ============================================================
 
@@ -16,10 +16,10 @@ class UserRiskContextService:
     """
     사용자 투자성향 context를 제공하는 service입니다.
 
-    투자성향 값:
-    - SAFE: 안전형
-    - NORMAL: 보통형
-    - AGGRESSIVE: 위험형
+    내부 투자성향 코드:
+    - SAFE: 안정형
+    - NORMAL: 중립형
+    - AGGRESSIVE: 공격형
     """
 
     DEFAULT_RISK_TYPE = "NORMAL"
@@ -44,7 +44,8 @@ class UserRiskContextService:
 
     def _normalize_risk_type(self, risk_type: Optional[str]) -> str:
         """
-        DB에 저장된 투자성향 값을 SAFE / NORMAL / AGGRESSIVE 중 하나로 정규화합니다.
+        DB 또는 다른 서비스에서 전달된 투자성향 값을
+        SAFE / NORMAL / AGGRESSIVE 중 하나로 정규화합니다.
         """
         if not risk_type:
             return self.DEFAULT_RISK_TYPE
@@ -52,17 +53,24 @@ class UserRiskContextService:
         normalized = str(risk_type).strip().upper()
 
         mapping = {
+            # 안정형
             "SAFE": "SAFE",
+            "안정형": "SAFE",
             "안전형": "SAFE",
             "STABLE": "SAFE",
             "CONSERVATIVE": "SAFE",
 
+            # 중립형
             "NORMAL": "NORMAL",
+            "중립형": "NORMAL",
             "보통형": "NORMAL",
+            "NEUTRAL": "NORMAL",
             "MODERATE": "NORMAL",
             "BALANCED": "NORMAL",
 
+            # 공격형
             "AGGRESSIVE": "AGGRESSIVE",
+            "공격형": "AGGRESSIVE",
             "위험형": "AGGRESSIVE",
             "RISK": "AGGRESSIVE",
             "HIGH_RISK": "AGGRESSIVE",
@@ -72,15 +80,17 @@ class UserRiskContextService:
 
     def get_risk_label(self, risk_type: str) -> str:
         """
-        투자성향 영문 코드를 화면 표시용 한글 라벨로 변환합니다.
+        내부 투자성향 코드를 팀 공통 한글 라벨로 변환합니다.
         """
+        normalized = self._normalize_risk_type(risk_type)
+
         labels = {
-            "SAFE": "안전형",
-            "NORMAL": "보통형",
-            "AGGRESSIVE": "위험형",
+            "SAFE": "안정형",
+            "NORMAL": "중립형",
+            "AGGRESSIVE": "공격형",
         }
 
-        return labels.get(risk_type, "보통형")
+        return labels.get(normalized, "중립형")
 
     def get_interpretation_guide(self, risk_type: str) -> str:
         """
@@ -90,18 +100,19 @@ class UserRiskContextService:
 
         if normalized == "SAFE":
             return (
-                "안전형 사용자는 변동성과 손실 가능성을 우선적으로 확인해야 합니다. "
+                "안정형 사용자는 변동성과 손실 가능성을 우선적으로 확인해야 합니다. "
                 "부정 뉴스, 고위험 섹터, 급격한 가격 변동이 있는 경우 보수적으로 해석합니다."
             )
 
         if normalized == "AGGRESSIVE":
             return (
-                "위험형 사용자는 이슈 집중도와 성장 가능성을 함께 참고할 수 있습니다. "
-                "다만 긍정 요인이 있더라도 투자 권유가 아니며, 변동성과 손실 가능성을 함께 확인해야 합니다."
+                "공격형 사용자는 이슈 집중도와 성장 가능성을 함께 참고할 수 있습니다. "
+                "다만 긍정 요인이 있더라도 투자 권유가 아니며, "
+                "변동성과 손실 가능성을 함께 확인해야 합니다."
             )
 
         return (
-            "보통형 사용자는 긍정 요인과 위험 요인을 균형 있게 확인해야 합니다. "
+            "중립형 사용자는 긍정 요인과 위험 요인을 균형 있게 확인해야 합니다. "
             "뉴스 흐름, 섹터 이슈, 가격 변동을 함께 참고합니다."
         )
 
@@ -120,3 +131,16 @@ class UserRiskContextService:
             return "MEDIUM"
 
         return "NORMAL"
+    
+    def get_user_risk_context(self, user_id: int) -> dict[str, str]:
+        """
+        사용자 투자성향 코드와 화면 표시용 라벨을 함께 반환합니다.
+        """
+        risk_type = self.get_user_risk_type(user_id)
+
+        return {
+            "risk_type": risk_type,
+            "risk_label": self.get_risk_label(risk_type),
+            "interpretation_guide": self.get_interpretation_guide(risk_type),
+            "warning_level": self.get_risk_warning_level(risk_type),
+        }
