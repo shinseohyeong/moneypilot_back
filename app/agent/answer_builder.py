@@ -187,11 +187,6 @@ def build_rule_based_answer(
                     f"- 종가: {format_won(close_price)}"
                 )
 
-            if previous_close is not None:
-                lines.append(
-                    f"- 전일 종가: "
-                    f"{format_won(previous_close)}"
-                )
 
             if change_rate is not None:
                 lines.append(
