@@ -134,6 +134,11 @@ def search_stock_news_rag_tool(
                 "관심종목을 먼저 등록해주세요."
             ),
         }
+    logger.info(
+        "[stock_news_rag_tool] original_query=%s, search_query=%s",
+        query,
+        search_query,
+    )
 
     result = search_rag_documents(
         query=search_query,

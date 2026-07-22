@@ -5,10 +5,9 @@ from app.core.config import settings
 
 
 client = Client(
-    host=settings.ollama_base_url.rstrip("/"),
+    host="http://192.168.0.213:11434",
     timeout=300.0,
 )
-
 
 def embed_text(text: str) -> list[float]:
     """
