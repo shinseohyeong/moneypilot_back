@@ -3,7 +3,9 @@ from typing import Any
 
 from app.rag.chunkers import chunk_text
 from app.rag.embeddings import embed_text, embed_texts
-from app.rag.vector_store import get_rag_collection
+from app.rag.vector_store import (
+    get_common_rag_collection,
+)
 
 
 def normalize_metadata_value(
@@ -140,7 +142,7 @@ def upsert_rag_document(
     새로운 청크로 교체한다.
     """
 
-    collection = get_rag_collection()
+    collection = get_common_rag_collection()
 
     base_metadata: dict[str, Any] = {
         "user_id": user_id,
@@ -224,7 +226,7 @@ def search_rag_documents(
     month가 없으면 월 조건 없이 전체 문서에서 검색한다.
     """
 
-    collection = get_rag_collection()
+    collection = get_common_rag_collection()
 
     where = build_rag_where(
         user_id=user_id,
@@ -332,7 +334,7 @@ def delete_rag_document_by_key(
     document_key에 해당하는 모든 청크를 삭제한다.
     """
 
-    collection = get_rag_collection()
+    collection = get_common_rag_collection()
 
     collection.delete(
         where={
@@ -354,7 +356,7 @@ def delete_rag_documents_by_user(
     특정 사용자의 모든 RAG 문서를 삭제한다.
     """
 
-    collection = get_rag_collection()
+    collection = get_common_rag_collection()
 
     collection.delete(
         where={
